@@ -1,0 +1,24 @@
+# UI Completion Checklist
+
+- [ ] Existing design patterns reused
+- [ ] Clear primary action
+- [ ] Clear information hierarchy
+- [ ] No unnecessary cards
+- [ ] No excessive rounding
+- [ ] No decorative gradients
+- [ ] No unnecessary icons
+- [ ] Responsive desktop/tablet/mobile
+- [ ] Loading state
+- [ ] Empty state
+- [ ] Error state
+- [ ] Disabled state where relevant
+- [ ] Keyboard accessible
+- [ ] Visible focus states
+- [ ] Semantic HTML
+- [ ] Consistent spacing
+- [ ] Consistent typography
+- [ ] Semantic colors
+- [ ] No fake dashboard data unless requested
+- [ ] No unnecessary dependencies
+- [ ] No unnecessary "use client"
+- [ ] Final anti-AI-slop review completed
