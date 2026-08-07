@@ -24,20 +24,16 @@ export default async function StudyDetailPage({
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-theme(spacing.16))] gap-6 p-6">
+    <div className="flex flex-col gap-6">
       <CaseHeader study={study} />
-      
-      <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0">
-        {/* Left Panel - Viewer & Vis */}
-        <div className="flex flex-col gap-6 lg:w-[70%] min-h-0">
-          <div className="flex-1 min-h-0">
-            <XrayViewer study={study} />
-          </div>
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="flex min-w-0 flex-col gap-6">
+          <XrayViewer study={study} />
           <AiVisualization study={study} />
         </div>
 
-        {/* Right Panel - Metadata & Review */}
-        <div className="flex flex-col gap-6 lg:w-[30%] overflow-y-auto pr-2">
+        <div className="flex flex-col gap-6">
           <AiSummaryPanel study={study} />
           <ReviewPanel study={study} />
         </div>

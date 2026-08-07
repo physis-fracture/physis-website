@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Plus, X } from "lucide-react";
 import { createStudy, finalizeStudy } from "../actions/create-study";
+import {
+  ALLOWED_MIME_TYPES,
+  MAX_FILE_SIZE_BYTES,
+} from "../constants/upload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -61,9 +65,21 @@ export function NewStudyForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (images.some((img) => !img.file)) {
-      toast.error("Please select a file for all image entries.");
-      return;
+
+    for (const img of images) {
+      const file = img.file;
+      if (!file) {
+        toast.error("Please select a file for all image entries.");
+        return;
+      }
+      if (!ALLOWED_MIME_TYPES.includes(file.type as (typeof ALLOWED_MIME_TYPES)[number])) {
+        toast.error(`${file.name} uses an unsupported format.`);
+        return;
+      }
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        toast.error(`${file.name} exceeds the 32 MB limit.`);
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -84,20 +100,21 @@ export function NewStudyForm() {
         notes: notes.trim() || undefined,
         images: images.map((img) => ({
           fileName: img.file!.name,
-          fileType: img.file!.type,
+          fileType: img.file!.type as (typeof ALLOWED_MIME_TYPES)[number],
           fileSize: img.file!.size,
           view: img.view,
           laterality: img.laterality,
         })),
       };
 
-      const { studyId, images: uploadData } = await createStudy(studyPayload);
+      const plan = await createStudy(studyPayload);
+      const { studyId } = plan;
 
       setStage("Uploading images...");
 
       await Promise.all(
-        uploadData.map(async (uploadDef) => {
-          const imgEntry = images.find((i) => i.id === uploadDef.imageId);
+        plan.images.map(async (uploadDef, i) => {
+          const imgEntry = images[i];
 
           if (!imgEntry?.file) {
             throw new Error(`No matching file for image ${uploadDef.imageId}`);
@@ -118,7 +135,7 @@ export function NewStudyForm() {
       );
 
       setStage("Running Physis analysis...");
-      const finalizeResult = await finalizeStudy(studyId);
+      const finalizeResult = await finalizeStudy(studyPayload, plan);
 
       if (!finalizeResult.success) {
         toast.error("Study uploaded, but analysis failed. Please check the worklist.");
@@ -226,7 +243,7 @@ export function NewStudyForm() {
                   <Input
                     id={`file-${img.id}`}
                     type="file"
-                    accept="image/*,.dcm"
+                    accept=".png,.jpg,.jpeg,.tif,.tiff,.bmp,.webp,.gif"
                     required
                     disabled={isSubmitting}
                     onChange={(e) => {

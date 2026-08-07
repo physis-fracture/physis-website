@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { newStudySchema, NewStudyInput } from "../schemas/new-study";
 import { buildObjectKey, generateUploadUrl, headObject, generateViewUrl } from "@/lib/r2/client";
@@ -33,7 +33,18 @@ async function logAudit(
   }
 }
 
-export async function createStudy(data: NewStudyInput) {
+export type StudyUploadPlanImage = {
+  imageId: string;
+  objectKey: string;
+  uploadUrl: string;
+};
+
+export type StudyUploadPlan = {
+  studyId: string;
+  images: StudyUploadPlanImage[];
+};
+
+export async function createStudy(data: NewStudyInput): Promise<StudyUploadPlan> {
   const result = newStudySchema.safeParse(data);
   if (!result.success) {
     throw new Error("Validation failed: " + result.error.message);
@@ -46,7 +57,94 @@ export async function createStudy(data: NewStudyInput) {
     throw new Error("Unauthorized");
   }
 
+  const { data: existing, error: existingError } = await supabase
+    .from("studies")
+    .select("id")
+    .eq("study_code", validData.study_code)
+    .maybeSingle();
+  if (existingError) {
+    throw new Error(`Failed to check study code: ${existingError.message}`);
+  }
+  if (existing) {
+    throw new Error(
+      `Study code "${validData.study_code}" already exists. Use a different code.`,
+    );
+  }
+
   const studyId = crypto.randomUUID();
+  const images: StudyUploadPlanImage[] = [];
+
+  for (let i = 0; i < validData.images.length; i++) {
+    const img = validData.images[i];
+    const imageId = crypto.randomUUID();
+    const objectKey = buildObjectKey(studyId, imageId, img.fileType);
+    const uploadUrl = await generateUploadUrl(objectKey, img.fileType);
+
+    images.push({ imageId, objectKey, uploadUrl });
+  }
+
+  return { studyId, images };
+}
+
+export async function finalizeStudy(
+  studyPayload: NewStudyInput,
+  plan: StudyUploadPlan,
+) {
+  const result = newStudySchema.safeParse(studyPayload);
+  if (!result.success) {
+    throw new Error("Validation failed: " + result.error.message);
+  }
+  const validData = result.data;
+  const { studyId, images: planImages } = plan;
+
+  const supabase = await createClient();
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData?.user) {
+    throw new Error("Unauthorized");
+  }
+
+  const admin = createAdminClient();
+  const inferenceImages = [];
+
+  for (let i = 0; i < planImages.length; i++) {
+    const img = planImages[i];
+    const meta = validData.images[i];
+
+    let head;
+    try {
+      head = await headObject(img.objectKey);
+    } catch (error) {
+      throw new Error(
+        `File missing in R2 for key: ${img.objectKey}`,
+        { cause: error },
+      );
+    }
+
+    if (
+      head.ContentLength !== undefined &&
+      meta.fileSize !== null &&
+      head.ContentLength !== meta.fileSize
+    ) {
+      throw new Error(
+        `File size mismatch for image ${img.imageId}: expected ${meta.fileSize}, got ${head.ContentLength}`,
+      );
+    }
+
+    if (head.ContentType && head.ContentType !== meta.fileType) {
+      throw new Error(
+        `Content type mismatch for image ${img.imageId}: expected ${meta.fileType}, got ${head.ContentType}`,
+      );
+    }
+
+    const viewUrl = await generateViewUrl(img.objectKey);
+
+    inferenceImages.push({
+      image_id: img.imageId,
+      image_url: viewUrl,
+      view: meta.view,
+      laterality: meta.laterality,
+    });
+  }
 
   const { error: studyError } = await supabase.from("studies").insert({
     id: studyId,
@@ -54,40 +152,34 @@ export async function createStudy(data: NewStudyInput) {
     age_years: validData.age_years,
     sex: validData.sex,
     notes: validData.notes || null,
-    status: "draft",
+    status: "uploading",
     created_by: userData.user.id,
   });
-
-  if (studyError) throw new Error(`Failed to create study: ${studyError.message}`);
-
-  const imageUploads = [];
-  const imageRows = [];
-
-  for (let i = 0; i < validData.images.length; i++) {
-    const img = validData.images[i];
-    const imageId = crypto.randomUUID();
-    const objectKey = buildObjectKey(studyId, imageId, img.fileName);
-
-    imageRows.push({
-      id: imageId,
-      study_id: studyId,
-      object_key: objectKey,
-      original_filename: img.fileName,
-      mime_type: img.fileType,
-      byte_size: img.fileSize,
-      view: img.view,
-      laterality: img.laterality,
-      sort_order: i + 1,
-      storage_status: "pending" as const,
-    });
-
-    const uploadUrl = await generateUploadUrl(objectKey, img.fileType);
-    imageUploads.push({
-      imageId,
-      uploadUrl,
-      objectKey,
-    });
+  if (studyError) {
+    if (studyError.code === "23505") {
+      throw new Error(
+        `Study code "${validData.study_code}" already exists. Use a different code.`,
+      );
+    }
+    throw new Error(`Failed to create study: ${studyError.message}`);
   }
+
+  const imageRows = planImages.map((img, i) => {
+    const meta = validData.images[i];
+    return {
+      id: img.imageId,
+      study_id: studyId,
+      object_key: img.objectKey,
+      original_filename: meta.fileName,
+      mime_type: meta.fileType,
+      byte_size: meta.fileSize,
+      view: meta.view,
+      laterality: meta.laterality,
+      sort_order: i + 1,
+      storage_status: "verified" as const,
+      uploaded_at: new Date().toISOString(),
+    };
+  });
 
   const { error: imagesError } = await supabase.from("images").insert(imageRows);
   if (imagesError) throw new Error(`Failed to create images: ${imagesError.message}`);
@@ -96,64 +188,8 @@ export async function createStudy(data: NewStudyInput) {
     study_id: studyId,
     actor_id: userData.user.id,
     event_type: "study_created",
-    metadata: { message: "Study draft created" },
+    metadata: { message: "Study created after verified upload" },
   });
-
-  return { studyId, images: imageUploads };
-}
-
-export async function finalizeStudy(studyId: string) {
-  const supabase = await createClient();
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  if (userError || !userData?.user) {
-    throw new Error("Unauthorized");
-  }
-
-  const { data: study, error: studyError } = await supabase
-    .from("studies")
-    .select("id, study_code, age_years, sex")
-    .eq("id", studyId)
-    .single();
-
-  if (studyError || !study) throw new Error("Study not found");
-
-  const { data: images, error: imagesError } = await supabase
-    .from("images")
-    .select("id, object_key, view, laterality")
-    .eq("study_id", studyId);
-
-  if (imagesError || !images) throw new Error("Images not found");
-
-  const inferenceImages = [];
-
-  for (const img of images) {
-    const head = await headObject(img.object_key);
-    if (!head) throw new Error(`File missing in R2 for key: ${img.object_key}`);
-
-    const { error: verifyError } = await supabase
-      .from("images")
-      .update({ storage_status: "verified" })
-      .eq("id", img.id);
-    if (verifyError) {
-      throw new Error(`Failed to verify image ${img.id}: ${verifyError.message}`);
-    }
-    const viewUrl = await generateViewUrl(img.object_key);
-
-    inferenceImages.push({
-      image_id: img.id,
-      image_url: viewUrl,
-      view: img.view,
-      laterality: img.laterality,
-    });
-  }
-
-  const { error: uploadingError } = await supabase
-    .from("studies")
-    .update({ status: "uploading" })
-    .eq("id", studyId);
-  if (uploadingError) {
-    throw new Error(`Failed to update study status: ${uploadingError.message}`);
-  }
 
   await logAudit(supabase, {
     study_id: studyId,
@@ -182,8 +218,8 @@ export async function finalizeStudy(studyId: string) {
   try {
     const aiResponse = await callInference({
       study_id: studyId,
-      age_years: study.age_years,
-      sex: study.sex,
+      age_years: validData.age_years,
+      sex: validData.sex,
       images: inferenceImages,
     });
 
@@ -195,7 +231,7 @@ export async function finalizeStudy(studyId: string) {
     const aiResultId = crypto.randomUUID();
     const completedTime = new Date().toISOString();
 
-    const { error: aiResultError } = await supabase.from("ai_results").insert({
+    const { error: aiResultError } = await admin.from("ai_results").insert({
       id: aiResultId,
       study_id: studyId,
       model_version: res.model_version,
@@ -222,7 +258,7 @@ export async function finalizeStudy(studyId: string) {
       implicit_age_map: ir.implicit_age_map,
     }));
 
-    const { error: aiImageError } = await supabase
+    const { error: aiImageError } = await admin
       .from("ai_image_results")
       .insert(aiImageResults);
     if (aiImageError) {
@@ -249,7 +285,7 @@ export async function finalizeStudy(studyId: string) {
     return { success: true, studyId, status: "ready" };
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    const { error: failureError } = await supabase.from("ai_results").insert({
+    const { error: failureError } = await admin.from("ai_results").insert({
       id: crypto.randomUUID(),
       study_id: studyId,
       model_version: "OsteoJEPA-v1",

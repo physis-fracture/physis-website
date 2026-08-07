@@ -24,9 +24,9 @@ export function CaseHeader({ study }: { study: StudyDetail }) {
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-semibold tracking-tight">{study.study_code}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <h1 className="text-xl font-semibold tracking-tight">{study.study_code}</h1>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>{study.age_years} yrs</span>
             <span aria-hidden="true">-</span>

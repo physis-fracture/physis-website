@@ -12,24 +12,22 @@ export function XrayViewer({ study }: { study: StudyDetail }) {
   const [activeTab, setActiveTab] = useState(defaultTab);
   
   if (images.length === 0) {
-    return <div className="flex items-center justify-center h-64 bg-muted text-muted-foreground rounded-md border border-border">No images available.</div>;
+    return <div className="flex h-[55vh] min-h-[320px] items-center justify-center rounded-md border border-border bg-muted text-muted-foreground">No images available.</div>;
   }
 
   return (
-    <div className="flex flex-col gap-4 h-full">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 flex flex-col min-h-0">
-        <div className="flex items-center justify-between mb-2">
-          <TabsList>
-            {images.map((img) => (
-              <TabsTrigger key={img.id} value={img.id}>
-                {img.view || "Image"} {img.laterality !== "unknown" ? `(${img.laterality})` : ""}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </div>
-        
+    <div className="flex flex-col gap-3">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList>
+          {images.map((img) => (
+            <TabsTrigger key={img.id} value={img.id}>
+              {img.view || "Image"} {img.laterality !== "unknown" ? `(${img.laterality})` : ""}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
         {images.map((img) => (
-          <TabsContent key={img.id} value={img.id} className="flex-1 min-h-0 mt-0 data-[state=active]:flex flex-col">
+          <TabsContent key={img.id} value={img.id} className="mt-3">
             <InteractiveViewer imageUrl={img.viewUrl!} />
             {study.aiResult && (
               <div className="mt-2 text-sm text-muted-foreground text-center">
@@ -83,15 +81,15 @@ function InteractiveViewer({ imageUrl }: { imageUrl: string }) {
   }, []);
 
   return (
-    <div className="relative flex-1 bg-muted rounded-md overflow-hidden border border-border flex items-center justify-center">
+    <div className="relative flex h-[55vh] min-h-[320px] items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
       <div className="absolute right-2 top-2 z-10">
-        <Button variant="secondary" size="icon" onClick={() => { setScale(1); setPos({ x: 0, y: 0 }); }}>
+        <Button variant="secondary" size="icon" onClick={() => { setScale(1); setPos({ x: 0, y: 0 }); }} aria-label="Reset view">
           <RotateCcw />
         </Button>
       </div>
       <div 
         ref={containerRef}
-        className={`w-full h-full flex items-center justify-center ${scale > 1 ? "cursor-move" : ""}`}
+        className={`flex h-full w-full items-center justify-center ${scale > 1 ? "cursor-move" : ""}`}
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}

@@ -38,6 +38,7 @@ Read specific rule files under `docs/rules/` as needed to save token context:
 - 🔗 **URL State & Data Tables**: [`docs/rules/url-state-tables.md`](file:///mnt/data/lomba/datathon/website/physis/docs/rules/url-state-tables.md) — URL query params as canonical state, validation schemas, debouncing, and pagination.
 - 🎨 **Design Tokens & Presets**: [`docs/rules/design-tokens.md`](file:///mnt/data/lomba/datathon/website/physis/docs/rules/design-tokens.md) — Semantic CSS variables, preset compatibility (`primary` ≠ blue), and domain-specific hardcoded colors.
 - ✂️ **Ponytail & Refactoring**: [`docs/rules/ponytail-refactoring.md`](file:///mnt/data/lomba/datathon/website/physis/docs/rules/ponytail-refactoring.md) — Over-engineering prevention (Mode `full`) and focused diff rules.
+- ☁️ **Cloudflare R2 & Uploads**: [`docs/rules/r2.md`](file:///mnt/data/lomba/datathon/website/physis/docs/rules/r2.md) — Object keys, presigned PUT/GET flow, CORS, env vars, and upload validation.
 
 ---
 

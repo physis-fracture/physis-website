@@ -79,7 +79,7 @@ export function AiVisualization({ study }: { study: StudyDetail }) {
               ))}
             </TabsList>
 
-            <div className="relative mt-4 flex aspect-square items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
+            <div className="relative mt-4 flex h-[45vh] min-h-[280px] items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
               {activeImage?.viewUrl && (
                 <img
                   src={activeImage.viewUrl}
