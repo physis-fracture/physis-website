@@ -1,9 +1,18 @@
 import { z } from "zod";
+import {
+  ALLOWED_MIME_TYPES,
+  MAX_FILE_SIZE_BYTES,
+} from "../constants/upload";
 
 export const imageMetadataSchema = z.object({
   fileName: z.string().min(1, "File name is required"),
-  fileType: z.string().min(1, "File type is required"),
-  fileSize: z.number().min(1, "File must not be empty"),
+  fileType: z.enum(ALLOWED_MIME_TYPES, {
+    message: "Unsupported file type",
+  }),
+  fileSize: z
+    .number()
+    .min(1, "File must not be empty")
+    .max(MAX_FILE_SIZE_BYTES, "File exceeds the 32 MB limit"),
   view: z.enum(["PA", "AP", "LATERAL", "OTHER", "UNKNOWN"]),
   laterality: z.enum(["left", "right", "unknown"]),
 });
