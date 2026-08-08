@@ -1,122 +1,84 @@
-import { AnalyticsData } from '../api/get-analytics';
-import { Separator } from '@/components/ui/separator';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import type { AnalyticsData } from "../api/get-analytics";
+import { AnalyticsSummary } from "./analytics-summary";
+import { PriorityDistributionChart } from "./priority-distribution-chart";
+import { ReviewOutcomesChart } from "./review-outcomes-chart";
+import { AgeDistributionChart } from "./age-distribution-chart";
 
-function CountTable({
-  caption,
-  rows,
+function ChartCard({
+  title,
+  description,
+  children,
 }: {
-  caption: string;
-  rows: Array<{ label: string; count: number }>;
+  title: string;
+  description?: string;
+  children: React.ReactNode;
 }) {
   return (
-    <div className="w-full max-w-sm rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>{caption}</TableHead>
-            <TableHead className="text-right">Count</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((row) => (
-            <TableRow key={row.label}>
-              <TableCell>{row.label}</TableCell>
-              <TableCell className="text-right">{row.count}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+    <Card className="min-w-0 gap-3 py-3">
+      <CardHeader className="px-4 pb-0">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        {description && <CardDescription>{description}</CardDescription>}
+      </CardHeader>
+      <CardContent className="px-4">{children}</CardContent>
+    </Card>
   );
 }
 
 export function AnalyticsDashboard({ data }: { data: AnalyticsData }) {
-  const { studiesByStatus, reviewsByOutcome, inferenceStats, priorityDistribution, ageDistribution } = data;
+  const totalStudies = Object.values(data.studiesByStatus).reduce(
+    (sum, count) => sum + count,
+    0,
+  );
 
-  const totalStudies = Object.values(studiesByStatus).reduce((a, b) => a + b, 0);
-  const pendingCount = (studiesByStatus['queued'] || 0) + (studiesByStatus['processing'] || 0) + (studiesByStatus['ready'] || 0);
-  const reviewedCount = studiesByStatus['reviewed'] || 0;
-  const failedCount = studiesByStatus['ai_failed'] || 0;
-
-  const successRate = inferenceStats.totalRuns > 0
-    ? ((inferenceStats.successCount / inferenceStats.totalRuns) * 100).toFixed(1)
-    : 0;
+  if (totalStudies === 0) {
+    return (
+      <Empty>
+        <EmptyContent>
+          <EmptyTitle>No analytics data yet</EmptyTitle>
+          <EmptyDescription>
+            Analytics will appear after studies are processed.
+          </EmptyDescription>
+        </EmptyContent>
+      </Empty>
+    );
+  }
 
   return (
-    <div className="flex flex-col gap-6 text-sm text-foreground">
-      <section className="flex flex-col gap-3">
-        <h2 className="text-muted-foreground font-medium">Study Overview</h2>
-        <div className="flex flex-wrap gap-4">
-          <div>Total: <span className="font-medium">{totalStudies}</span></div>
-          <div>Pending: <span className="font-medium">{pendingCount}</span></div>
-          <div>Reviewed: <span className="font-medium">{reviewedCount}</span></div>
-          <div>AI Failed: <span className="font-medium">{failedCount}</span></div>
-        </div>
-      </section>
+    <div className="flex flex-col gap-6">
+      <AnalyticsSummary data={data} />
 
-      <Separator />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <ChartCard
+          title="Priority Distribution"
+          description="Studies by AI triage priority"
+        >
+          <PriorityDistributionChart distribution={data.priorityDistribution} />
+        </ChartCard>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-muted-foreground font-medium">Inference Performance</h2>
-        <div className="flex flex-wrap gap-4">
-          <div>Total Runs: <span className="font-medium">{inferenceStats.totalRuns}</span></div>
-          <div>Success Rate: <span className="font-medium">{successRate}%</span></div>
-          <div>Avg Latency: <span className="font-medium">{Math.round(inferenceStats.avgInferenceTimeMs)} ms</span></div>
-        </div>
-      </section>
+        <ChartCard
+          title="Review Outcomes"
+          description="Radiologist-submitted results"
+        >
+          <ReviewOutcomesChart outcomes={data.reviewsByOutcome} />
+        </ChartCard>
+      </div>
 
-      <Separator />
-
-      <section className="flex flex-col gap-3">
-        <h2 className="text-muted-foreground font-medium">Priority Distribution</h2>
-        <CountTable
-          caption="Priority"
-          rows={[
-            { label: 'Critical', count: priorityDistribution.critical },
-            { label: 'High', count: priorityDistribution.high },
-            { label: 'Standard', count: priorityDistribution.standard },
-            { label: 'Unscored', count: priorityDistribution.unscored },
-          ]}
-        />
-      </section>
-
-      <Separator />
-
-      <section className="flex flex-col gap-3">
-        <h2 className="text-muted-foreground font-medium">Review Outcomes</h2>
-        <CountTable
-          caption="Outcome"
-          rows={[
-            { label: 'Fracture', count: reviewsByOutcome['fracture'] || 0 },
-            { label: 'No Fracture', count: reviewsByOutcome['no_fracture'] || 0 },
-            { label: 'Uncertain', count: reviewsByOutcome['uncertain'] || 0 },
-          ]}
-        />
-      </section>
-
-      <Separator />
-
-      <section className="flex flex-col gap-3">
-        <h2 className="text-muted-foreground font-medium">Age Distribution</h2>
-        <CountTable
-          caption="Age Band"
-          rows={[
-            { label: '0-4', count: ageDistribution['0-4'] },
-            { label: '5-9', count: ageDistribution['5-9'] },
-            { label: '10-14', count: ageDistribution['10-14'] },
-            { label: '15-19', count: ageDistribution['15-19'] },
-            { label: '20-25', count: ageDistribution['20-25'] },
-          ]}
-        />
-      </section>
+      <ChartCard title="Age Distribution">
+        <AgeDistributionChart distribution={data.ageDistribution} />
+      </ChartCard>
     </div>
   );
 }
