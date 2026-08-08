@@ -73,7 +73,11 @@ export function LoginForm() {
 
       <FieldError errors={error ? [{ message: error }] : undefined} />
 
-      <Button type="submit" disabled={loading} className="w-full">
+      <Button
+        type="submit"
+        disabled={loading}
+        className="w-full bg-cyan-500 text-white hover:bg-cyan-600/90"
+      >
         {loading && <Spinner data-icon="inline-start" />}
         {loading ? "Signing in..." : "Sign in"}
       </Button>
