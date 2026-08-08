@@ -3,13 +3,11 @@ import { ChevronRight } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import type { InferenceHealthStatus } from "@/lib/inference/client";
 import {
   PENDING_STATUSES,
   type DashboardCounts,
 } from "@/features/dashboard/api/get-dashboard-overview";
 import type { WorklistRow } from "@/features/worklist/types";
-import { formatRelativeTime } from "@/features/worklist/utils/relative-time";
 import { RecentStudiesTable } from "./recent-studies-table";
 
 const pendingQuery = PENDING_STATUSES.join(",");
@@ -47,29 +45,14 @@ const attentionRows: {
   { key: "unscoredCount", label: "Unscored Studies", href: "/worklist?priority=unscored" },
 ];
 
-const healthLabel: Record<InferenceHealthStatus, string> = {
-  ok: "Operational",
-  model_unavailable: "Model unavailable",
-  unreachable: "Unreachable",
-};
-
-// Domain-semantic status colors (allowed exception per design-tokens.md).
-const healthDotClass: Record<InferenceHealthStatus, string> = {
-  ok: "bg-green-500",
-  model_unavailable: "bg-amber-500",
-  unreachable: "bg-red-500",
-};
-
 export function DashboardOverview({
   counts,
   recentStudies,
-  inferenceHealth,
-  lastInferenceAt,
+  children,
 }: {
   counts: DashboardCounts;
   recentStudies: WorklistRow[];
-  inferenceHealth: InferenceHealthStatus;
-  lastInferenceAt: string | null;
+  children: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-6">
@@ -126,29 +109,7 @@ export function DashboardOverview({
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">System Status</CardTitle>
-            <CardDescription>Inference service health.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            <div className="flex items-center justify-between gap-2 text-sm">
-              <span className="text-muted-foreground">Inference API</span>
-              <span className="flex items-center gap-1.5 font-medium">
-                <span className={`size-2 rounded-full ${healthDotClass[inferenceHealth]}`} />
-                {healthLabel[inferenceHealth]}
-              </span>
-            </div>
-            {lastInferenceAt !== null && (
-              <div className="flex items-center justify-between gap-2 text-sm">
-                <span className="text-muted-foreground">Last successful inference</span>
-                <span className="font-medium">
-                  {formatRelativeTime(lastInferenceAt)} ago
-                </span>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {children}
       </div>
 
       <div className="flex flex-col gap-4">

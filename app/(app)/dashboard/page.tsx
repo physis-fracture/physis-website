@@ -1,13 +1,16 @@
 import Link from "next/link";
 import { FilePlus } from "lucide-react";
+import { Suspense } from "react";
 
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { getDashboardOverview } from "@/features/dashboard/api/get-dashboard-overview";
 import { DashboardOverview } from "@/features/dashboard/components/dashboard-overview";
-import { getInferenceHealth } from "@/lib/inference/client";
-import { getSystemStatus } from "@/features/admin/api/get-system-status";
+import {
+  SystemStatusCard,
+  SystemStatusCardSkeleton,
+} from "@/features/dashboard/components/system-status-card";
 
 export const instant = false;
 
@@ -20,25 +23,15 @@ export default async function DashboardPage() {
     getDashboardOverview(),
   ]);
 
-  let lastInferenceAt: string | null = null;
+  let isAdmin = false;
   if (user) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
       .eq("id", user.id)
       .single();
-
-    if (profile?.role === "admin") {
-      try {
-        const status = await getSystemStatus();
-        lastInferenceAt = status.lastInference.completedAt;
-      } catch {
-        lastInferenceAt = null;
-      }
-    }
+    isAdmin = profile?.role === "admin";
   }
-
-  const inferenceHealth = await getInferenceHealth();
 
   return (
     <div className="flex flex-col gap-6">
@@ -60,9 +53,11 @@ export default async function DashboardPage() {
       <DashboardOverview
         counts={overview.counts}
         recentStudies={overview.recentStudies}
-        inferenceHealth={inferenceHealth}
-        lastInferenceAt={lastInferenceAt}
-      />
+      >
+        <Suspense fallback={<SystemStatusCardSkeleton />}>
+          <SystemStatusCard isAdmin={isAdmin} />
+        </Suspense>
+      </DashboardOverview>
     </div>
   );
 }

@@ -40,7 +40,6 @@ export function LoginForm() {
 
     setLoading(false);
     router.push("/dashboard");
-    router.refresh();
   }
 
   return (
