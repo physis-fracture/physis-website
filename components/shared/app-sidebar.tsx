@@ -8,11 +8,11 @@ import {
   LayoutDashboard,
   LogOut,
   Settings,
-  Stethoscope,
   Users,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 
 import {
   Sidebar,
@@ -83,14 +83,20 @@ export function AppSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link href="/dashboard">
-                <div className="flex size-8 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
-                  <Stethoscope />
-                </div>
+              <Link href="/dashboard" className="">
+                <Image
+                  src="/android-chrome-512x512.png"
+                  alt="Physis"
+                  width={579}
+                  height={311}
+                  priority
+                  unoptimized
+                  className="h-8 w-auto shrink-0"
+                />
                 <div className="grid gap-0.5 leading-none text-left">
                   <span className="font-semibold">Physis</span>
                   <span className="text-xs text-sidebar-foreground/60">
-                    Pediatric Radiograph Triage
+                    Pediatric Fracture Triage
                   </span>
                 </div>
               </Link>
