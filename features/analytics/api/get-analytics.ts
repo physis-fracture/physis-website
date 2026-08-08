@@ -21,7 +21,6 @@ export interface AnalyticsData {
     "5-9": number;
     "10-14": number;
     "15-19": number;
-    "20-25": number;
   };
 }
 
@@ -45,7 +44,6 @@ interface AnalyticsPayload {
     "5-9"?: Json;
     "10-14"?: Json;
     "15-19"?: Json;
-    "20-25"?: Json;
   } | null;
 }
 
@@ -61,7 +59,6 @@ const EMPTY_AGE_DISTRIBUTION = {
   "5-9": 0,
   "10-14": 0,
   "15-19": 0,
-  "20-25": 0,
 };
 
 function toCountRecord(record?: Record<string, Json> | null): Record<string, number> {
@@ -74,10 +71,13 @@ function toCountRecord(record?: Record<string, Json> | null): Record<string, num
   return result;
 }
 
-function toCounts(source?: Record<string, Json> | null): Record<string, number> {
+function toCounts(
+  source?: Record<string, Json> | null,
+  keys?: string[],
+): Record<string, number> {
   const counts: Record<string, number> = {};
   for (const [key, value] of Object.entries(source ?? {})) {
-    if (typeof value === "number") {
+    if (typeof value === "number" && (!keys || keys.includes(key))) {
       counts[key] = value;
     }
   }
@@ -124,7 +124,7 @@ export async function getAnalytics(): Promise<AnalyticsData> {
     },
     ageDistribution: {
       ...EMPTY_AGE_DISTRIBUTION,
-      ...toCounts(ageDistribution),
+      ...toCounts(ageDistribution, ["0-4", "5-9", "10-14", "15-19"]),
     },
   };
 }
