@@ -32,18 +32,7 @@ import { PriorityBadge } from "@/components/shared/priority-badge";
 import { StatusBadge } from "@/components/shared/status-badge";
 import type { WorklistRow } from "@/features/worklist/types";
 import type { WorklistQuery } from "@/features/worklist/schemas/worklist-query";
-
-function formatWaitingTime(arrivedAt: string): string {
-  const diff = Date.now() - new Date(arrivedAt).getTime();
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  if (hours > 24) {
-    const days = Math.floor(hours / 24);
-    return `${days}d ${hours % 24}h`;
-  }
-  if (hours > 0) return `${hours}h ${minutes}m`;
-  return `${minutes}m`;
-}
+import { formatRelativeTime } from "@/features/worklist/utils/relative-time";
 
 export function WorklistTable({
   rows,
@@ -208,7 +197,7 @@ export function WorklistTable({
                       ))}
                     </div>
                   </TableCell>
-                  <TableCell>{formatWaitingTime(row.arrivedAt)}</TableCell>
+                  <TableCell>{formatRelativeTime(row.arrivedAt)}</TableCell>
                   <TableCell className="text-right font-mono">
                     {row.priorityPercentile !== null
                       ? `${row.priorityPercentile.toFixed(1)}%`

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { predictStudy, type PredictRequest } from "./client";
+import { predictStudy, getInferenceHealth, type PredictRequest } from "./client";
 
 const REQUEST: PredictRequest = {
   study_id: "study-1",
@@ -226,5 +226,53 @@ describe("predictStudy", () => {
       expect(outcome.message).not.toContain("X-Amz-Signature");
       expect(outcome.message).toContain("[redacted-url]");
     }
+  });
+});
+
+describe("getInferenceHealth", () => {
+  it("returns ok for a healthy service", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse({ status: "ok", contract_version: "v1" }),
+      ),
+    );
+
+    await expect(getInferenceHealth()).resolves.toBe("ok");
+  });
+
+  it("returns model_unavailable when no model is loaded", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse({ status: "model_unavailable", contract_version: "v1" }),
+      ),
+    );
+
+    await expect(getInferenceHealth()).resolves.toBe("model_unavailable");
+  });
+
+  it("returns unreachable for a malformed payload", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ nope: 1 })));
+
+    await expect(getInferenceHealth()).resolves.toBe("unreachable");
+  });
+
+  it("returns unreachable on network failure", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new Error("ECONNREFUSED")),
+    );
+
+    await expect(getInferenceHealth()).resolves.toBe("unreachable");
+  });
+
+  it("returns unreachable when the base URL is not configured", async () => {
+    delete process.env.PHYSIS_INFERENCE_BASE_URL;
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(getInferenceHealth()).resolves.toBe("unreachable");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
