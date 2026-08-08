@@ -5,31 +5,33 @@ import type { Database } from "./database.types";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+function requestUrl(input: RequestInfo | URL): string {
+  if (typeof input === "string") return input;
+  if (input instanceof URL) return input.toString();
+  return input.url;
+}
+
 /**
- * PostgREST validates a JWT's `iat` against its own server clock, which is a
- * separate service from Auth (GoTrue) that mints the token. Right after a
- * fresh login the token's `iat` can still be ahead of PostgREST's clock, so
- * the first data queries fail transiently with a 401 ("JWT issued at future",
- * or an empty-body 401 for JWT validation failures). The condition clears on
- * its own within ~2s once real time passes `iat`. Retry just those 401s with
- * a short backoff instead of failing the whole page render.
+ * PostgREST runs behind multiple replicas. Right after a fresh login the
+ * access token's `iat`/signing key can be rejected by a replica whose clock
+ * or JWKS cache hasn't caught up yet — the error surfaces as a 401 with
+ * "JWT issued at future" or a bare empty body, while the same token is
+ * accepted by the other replicas. The condition clears within seconds.
+ * Retry data-API 401s with a short backoff instead of failing the render.
  */
 const fetchWithJwtSkewRetry: typeof fetch = async (input, init) => {
+  const url = requestUrl(input);
   for (let attempt = 0; ; attempt++) {
     const response = await fetch(input, init);
-    if (response.status !== 401 || attempt >= 2) {
+    if (response.status !== 401 || !url.includes("/rest/v1/")) {
       return response;
     }
     if (init?.signal?.aborted) {
       return response;
     }
-    const body = (await response.clone().text()).trim();
-    const isJwtSkew =
-      body === "" ||
-      !body.startsWith("{") ||
-      body.includes("JWT issued at future") ||
-      body.includes("JWT not yet valid");
-    if (!isJwtSkew) {
+    const body = await response.clone().text();
+    console.error(`[supabase:401] ${url} (attempt ${attempt + 1}) ${body.slice(0, 200)}`);
+    if (attempt >= 3) {
       return response;
     }
     await sleep(1000 * 2 ** attempt);
