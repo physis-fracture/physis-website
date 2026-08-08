@@ -12,36 +12,30 @@ export type Database = {
       ai_image_results: {
         Row: {
           ai_result_id: string
+          boxes: Json | null
           created_at: string
           id: string
           image_id: string
-          implicit_age: number | null
-          implicit_age_gap: number | null
-          implicit_age_map: Json | null
-          surprise_map: Json | null
           triage_score: number
+          valid_patch_fraction: number | null
         }
         Insert: {
           ai_result_id: string
+          boxes?: Json | null
           created_at?: string
           id?: string
           image_id: string
-          implicit_age?: number | null
-          implicit_age_gap?: number | null
-          implicit_age_map?: Json | null
-          surprise_map?: Json | null
           triage_score: number
+          valid_patch_fraction?: number | null
         }
         Update: {
           ai_result_id?: string
+          boxes?: Json | null
           created_at?: string
           id?: string
           image_id?: string
-          implicit_age?: number | null
-          implicit_age_gap?: number | null
-          implicit_age_map?: Json | null
-          surprise_map?: Json | null
           triage_score?: number
+          valid_patch_fraction?: number | null
         }
         Relationships: [
           {

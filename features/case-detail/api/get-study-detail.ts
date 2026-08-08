@@ -23,10 +23,8 @@ export type StudyAiImageResult = {
   id: string;
   image_id: string;
   triage_score: number;
-  implicit_age: number | null;
-  implicit_age_gap: number | null;
-  surprise_map: Database["public"]["Tables"]["ai_image_results"]["Row"]["surprise_map"];
-  implicit_age_map: Database["public"]["Tables"]["ai_image_results"]["Row"]["implicit_age_map"];
+  valid_patch_fraction: number | null;
+  boxes: Database["public"]["Tables"]["ai_image_results"]["Row"]["boxes"];
 };
 
 export type StudyAiResult = {
@@ -129,7 +127,7 @@ export async function getStudyDetail(
     const { data, error: imageResultsError } = await supabase
       .from("ai_image_results")
       .select(
-        "id, image_id, triage_score, implicit_age, implicit_age_gap, surprise_map, implicit_age_map",
+        "id, image_id, triage_score, valid_patch_fraction, boxes",
       )
       .eq("ai_result_id", aiResult.id);
 

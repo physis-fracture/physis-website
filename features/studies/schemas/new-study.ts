@@ -19,10 +19,16 @@ export const imageMetadataSchema = z.object({
 
 export const newStudySchema = z.object({
   study_code: z.string().min(1, "Study code is required"),
-  age_years: z.number().min(0, "Minimum age is 0").max(25, "Maximum age is 25"),
+  age_years: z
+    .number()
+    .min(0.2, "Minimum age is 0.2 years")
+    .max(19.0, "Maximum age is 19 years"),
   sex: z.enum(["male", "female", "unknown"]),
   notes: z.string().optional(),
-  images: z.array(imageMetadataSchema).min(1, "At least one image is required"),
+  images: z
+    .array(imageMetadataSchema)
+    .min(1, "At least one image is required")
+    .max(8, "At most 8 images are allowed"),
 });
 
 export type NewStudyInput = z.infer<typeof newStudySchema>;

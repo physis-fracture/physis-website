@@ -4,7 +4,8 @@ import { createAdminClient, createClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { newStudySchema, NewStudyInput } from "../schemas/new-study";
 import { buildObjectKey, generateUploadUrl, headObject, generateViewUrl } from "@/lib/r2/client";
-import { callInference } from "@/lib/inference/client";
+import { predictStudy } from "@/lib/inference/client";
+import { mapPredictImageToDb, toPredictRequest } from "../utils/inference-mappers";
 import type { Database, Json } from "@/lib/supabase/database.types";
 
 type AuditEventInput = {
@@ -13,6 +14,26 @@ type AuditEventInput = {
   event_type: string;
   metadata?: Json;
 };
+
+class InferenceError extends Error {
+  code: string;
+
+  constructor(code: string, message: string) {
+    super(message);
+    this.name = "InferenceError";
+    this.code = code;
+  }
+}
+
+function normalizeError(error: unknown): { code: string; message: string } {
+  if (error instanceof InferenceError) {
+    return { code: error.code, message: error.message };
+  }
+  if (error instanceof Error) {
+    return { code: "INTERNAL_ERROR", message: error.message };
+  }
+  return { code: "INTERNAL_ERROR", message: "Unknown error" };
+}
 
 async function logAudit(
   supabase: SupabaseClient<Database>,
@@ -216,18 +237,20 @@ export async function finalizeStudy(
   });
 
   try {
-    const aiResponse = await callInference({
-      study_id: studyId,
-      age_years: validData.age_years,
-      sex: validData.sex,
-      images: inferenceImages,
-    });
+    const aiResponse = await predictStudy(
+      toPredictRequest({
+        studyId,
+        ageYears: validData.age_years,
+        sex: validData.sex,
+        images: inferenceImages,
+      }),
+    );
 
     if (!aiResponse.success) {
-      throw new Error(aiResponse.message || "Inference failed");
+      throw new InferenceError(aiResponse.code, aiResponse.message);
     }
 
-    const res = aiResponse.data;
+    const res = aiResponse.data.data;
     const aiResultId = crypto.randomUUID();
     const completedTime = new Date().toISOString();
 
@@ -247,16 +270,17 @@ export async function finalizeStudy(
       throw new Error(`Failed to save AI result: ${aiResultError.message}`);
     }
 
-    const aiImageResults = res.images.map((ir) => ({
-      id: crypto.randomUUID(),
-      ai_result_id: aiResultId,
-      image_id: ir.image_id,
-      triage_score: ir.triage_score,
-      implicit_age: ir.implicit_age,
-      implicit_age_gap: ir.implicit_age_gap,
-      surprise_map: ir.surprise_map,
-      implicit_age_map: ir.implicit_age_map,
-    }));
+    const aiImageResults = res.images.map((ir) => {
+      const row = mapPredictImageToDb(ir);
+      return {
+        id: crypto.randomUUID(),
+        ai_result_id: aiResultId,
+        image_id: row.image_id,
+        triage_score: row.triage_score,
+        valid_patch_fraction: row.valid_patch_fraction,
+        boxes: row.boxes as Json,
+      };
+    });
 
     const { error: aiImageError } = await admin
       .from("ai_image_results")
@@ -284,13 +308,14 @@ export async function finalizeStudy(
 
     return { success: true, studyId, status: "ready" };
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const { code, message } = normalizeError(error);
     const { error: failureError } = await admin.from("ai_results").insert({
       id: crypto.randomUUID(),
       study_id: studyId,
-      model_version: "OsteoJEPA-v1",
+      model_version: "unknown",
       status: "failed",
-      error_message: errorMessage,
+      error_code: code,
+      error_message: message,
       started_at: startTime,
       completed_at: new Date().toISOString(),
     });
@@ -310,7 +335,7 @@ export async function finalizeStudy(
       study_id: studyId,
       actor_id: userData.user.id,
       event_type: "inference_failed",
-      metadata: { message: errorMessage },
+      metadata: { message },
     });
 
     return { success: false, studyId, status: "ai_failed" };
