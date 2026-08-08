@@ -49,6 +49,10 @@ export function NewStudyForm() {
   ]);
 
   const handleAddImage = () => {
+    if (images.length >= 8) {
+      toast.error("At most 8 images are allowed.");
+      return;
+    }
     setImages([
       ...images,
       { id: crypto.randomUUID(), file: null, view: "UNKNOWN", laterality: "unknown" },
@@ -86,9 +90,9 @@ export function NewStudyForm() {
     setStage("Preparing study...");
 
     try {
-      const parsedAge = parseInt(ageYears, 10);
-      if (isNaN(parsedAge) || parsedAge < 0 || parsedAge > 25) {
-        throw new Error("Age must be a valid number between 0 and 25.");
+      const parsedAge = parseFloat(ageYears);
+      if (isNaN(parsedAge) || parsedAge < 0.2 || parsedAge > 19) {
+        throw new Error("Age must be a number between 0.2 and 19 years.");
       }
 
       const generatedCode = studyCode.trim() || `ST-${Math.floor(100000 + Math.random() * 900000)}`;
@@ -177,8 +181,9 @@ export function NewStudyForm() {
               <Input
                 id="ageYears"
                 type="number"
-                min="0"
-                max="25"
+                min="0.2"
+                max="19"
+                step="0.1"
                 required
                 value={ageYears}
                 onChange={(e) => setAgeYears(e.target.value)}
