@@ -6,6 +6,7 @@ export type WorklistRow = {
   sex: string;
   status: string;
   arrivedAt: string;
+  createdAt: string;
   updatedAt: string;
   views: string[];
   priorityPercentile: number | null;

@@ -108,6 +108,7 @@ export default async function WorklistPage({
     sex: study.sex ?? "unknown",
     status: study.status ?? "draft",
     arrivedAt: study.arrived_at ?? "",
+    createdAt: study.created_at ?? "",
     updatedAt: study.updated_at ?? "",
     views: study.views ?? [],
     priorityPercentile: study.priority_percentile,

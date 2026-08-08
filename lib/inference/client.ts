@@ -101,6 +101,14 @@ const predictErrorSchema = z.object({
 });
 
 const INFERENCE_TIMEOUT_MS = 120_000;
+const HEALTH_TIMEOUT_MS = 5_000;
+
+export type InferenceHealthStatus = "ok" | "model_unavailable" | "unreachable";
+
+const healthResponseSchema = z.object({
+  status: z.enum(["ok", "model_unavailable"]),
+  contract_version: z.string(),
+});
 
 const STATUS_MESSAGES: Record<number, string> = {
   401: "Inference service rejected the request credentials",
@@ -209,6 +217,34 @@ export async function predictStudy(
       code: "INTERNAL_ERROR",
       message: "Inference request failed",
     };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+/**
+ * One-shot liveness check against the public {PHYSIS_INFERENCE_BASE_URL}/v1/health
+ * endpoint. Never throws: any failure (missing env, network, timeout, bad payload)
+ * resolves to "unreachable" so a status card can degrade gracefully.
+ */
+export async function getInferenceHealth(): Promise<InferenceHealthStatus> {
+  const baseUrl = process.env.PHYSIS_INFERENCE_BASE_URL?.replace(/\/+$/, "");
+  if (!baseUrl) return "unreachable";
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), HEALTH_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(`${baseUrl}/v1/health`, {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+      signal: controller.signal,
+    });
+    const parsed = healthResponseSchema.safeParse(parseJson(await response.text()));
+    if (!response.ok || !parsed.success) return "unreachable";
+    return parsed.data.status;
+  } catch {
+    return "unreachable";
   } finally {
     clearTimeout(timeout);
   }
