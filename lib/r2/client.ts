@@ -2,6 +2,7 @@ import "server-only";
 
 import { S3Client } from "@aws-sdk/client-s3";
 import {
+  DeleteObjectsCommand,
   GetObjectCommand,
   HeadObjectCommand,
   PutObjectCommand,
@@ -73,6 +74,23 @@ export async function generateViewUrl(
   return getSignedUrl(getR2Client(), command, {
     expiresIn: expiresInSeconds,
   });
+}
+
+/**
+ * Delete a batch of objects (up to 1000 keys per call). No-op for an empty
+ * list. Throws if any object fails to delete.
+ */
+export async function deleteObjects(objectKeys: string[]): Promise<void> {
+  if (objectKeys.length === 0) return;
+  const command = new DeleteObjectsCommand({
+    Bucket: getBucket(),
+    Delete: { Objects: objectKeys.map((Key) => ({ Key })), Quiet: true },
+  });
+  const { Errors } = await getR2Client().send(command);
+  if (Errors && Errors.length > 0) {
+    const failed = Errors.map((e) => `${e.Key} (${e.Code})`).join(", ");
+    throw new Error(`Failed to delete objects: ${failed}`);
+  }
 }
 
 /** HEAD an object to verify it exists and check metadata. */

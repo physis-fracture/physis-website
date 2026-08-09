@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { useCallback, useRef } from "react";
-import { Search } from "lucide-react";
+import { useCallback, useRef, useState, useTransition } from "react";
+import { Search, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 import {
   Table,
@@ -15,6 +16,16 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   InputGroup,
   InputGroupAddon,
@@ -34,6 +45,62 @@ import { TablePagination } from "@/components/shared/table-pagination";
 import type { WorklistRow } from "@/features/worklist/types";
 import type { WorklistQuery } from "@/features/worklist/schemas/worklist-query";
 import { formatRelativeTime } from "@/features/worklist/utils/relative-time";
+import { deleteStudy } from "@/features/worklist/actions/delete-study";
+
+function DeleteStudyDialog({
+  studyId,
+  studyCode,
+}: {
+  studyId: string;
+  studyCode: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+
+  const handleDelete = () => {
+    startTransition(async () => {
+      const result = await deleteStudy(studyId);
+      if (result.success) {
+        toast.success(`Study ${studyCode} deleted`);
+        setOpen(false);
+      } else {
+        toast.error(result.error);
+      }
+    });
+  };
+
+  return (
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+          aria-label={`Delete study ${studyCode}`}
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
+          <Trash2 />
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent size="sm">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete study?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This permanently deletes {studyCode} and all of its images from
+            storage and records. This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <Button variant="destructive" disabled={isPending} onClick={handleDelete}>
+            {isPending ? "Deleting..." : "Delete"}
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
 
 export function WorklistTable({
   rows,
@@ -41,12 +108,14 @@ export function WorklistTable({
   page,
   pageSize,
   query,
+  canDelete = false,
 }: {
   rows: WorklistRow[];
   totalCount: number;
   page: number;
   pageSize: number;
   query: WorklistQuery;
+  canDelete?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -125,12 +194,15 @@ export function WorklistTable({
               <TableHead>Waiting</TableHead>
               <TableHead className="text-right">Score</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead className="w-12">
+                <span className="sr-only">Actions</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8}>
+                <TableCell colSpan={9}>
                   <Empty className="py-12">
                     <EmptyHeader>
                       <EmptyMedia variant="icon">
@@ -203,6 +275,14 @@ export function WorklistTable({
                   </TableCell>
                   <TableCell>
                     <StatusBadge status={row.status} />
+                  </TableCell>
+                  <TableCell>
+                    {canDelete && (
+                      <DeleteStudyDialog
+                        studyId={row.id}
+                        studyCode={row.studyCode}
+                      />
+                    )}
                   </TableCell>
                 </TableRow>
               ))

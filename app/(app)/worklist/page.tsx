@@ -21,6 +21,19 @@ export default async function WorklistPage({
   const query = parseWorklistQuery(params);
   const supabase = await createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  let canDelete = false;
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+    canDelete = profile?.role === "admin";
+  }
+
   let dbQuery = supabase
     .from("worklist_studies")
     .select(
@@ -134,6 +147,7 @@ export default async function WorklistPage({
             page={page}
             pageSize={PAGE_SIZE}
             query={query}
+            canDelete={canDelete}
           />
         </CardContent>
       </Card>
