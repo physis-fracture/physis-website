@@ -26,6 +26,7 @@ import {
   Field,
   FieldLabel,
 } from "@/components/ui/field";
+import { ImageDropzone } from "@/features/studies/components/image-dropzone";
 
 interface ImageEntry {
   id: string;
@@ -242,81 +243,78 @@ export function NewStudyForm() {
         <CardContent className="flex flex-col gap-4">
           {images.map((img) => (
             <div key={img.id} className="rounded-lg border p-4">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
-                <Field className="flex-1">
-                  <FieldLabel htmlFor={`file-${img.id}`}>File Upload</FieldLabel>
-                  <Input
+              <div className="flex flex-col gap-4">
+                <Field>
+                  <FieldLabel htmlFor={`file-${img.id}`}>Radiograph</FieldLabel>
+                  <ImageDropzone
                     id={`file-${img.id}`}
-                    type="file"
-                    accept=".png,.jpg,.jpeg,.tif,.tiff,.bmp,.webp,.gif"
-                    required
+                    file={img.file}
                     disabled={isSubmitting}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0] ?? null;
-                      handleUpdateImage(img.id, { file });
-                    }}
+                    onFileChange={(file) => handleUpdateImage(img.id, { file })}
                   />
                 </Field>
 
-                <Field className="lg:w-48">
-                  <FieldLabel>View</FieldLabel>
-                  <Select
-                    value={img.view}
-                    onValueChange={(v: "PA" | "AP" | "LATERAL" | "OTHER" | "UNKNOWN") =>
-                      handleUpdateImage(img.id, { view: v })
-                    }
-                    disabled={isSubmitting}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectItem value="PA">PA</SelectItem>
-                        <SelectItem value="AP">AP</SelectItem>
-                        <SelectItem value="LATERAL">Lateral</SelectItem>
-                        <SelectItem value="OTHER">Other</SelectItem>
-                        <SelectItem value="UNKNOWN">Unknown</SelectItem>
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                </Field>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+                  <Field className="flex-1">
+                    <FieldLabel>View</FieldLabel>
+                    <Select
+                      value={img.view}
+                      onValueChange={(v: "PA" | "AP" | "LATERAL" | "OTHER" | "UNKNOWN") =>
+                        handleUpdateImage(img.id, { view: v })
+                      }
+                      disabled={isSubmitting}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectItem value="PA">PA</SelectItem>
+                          <SelectItem value="AP">AP</SelectItem>
+                          <SelectItem value="LATERAL">Lateral</SelectItem>
+                          <SelectItem value="OTHER">Other</SelectItem>
+                          <SelectItem value="UNKNOWN">Unknown</SelectItem>
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </Field>
 
-                <Field className="lg:w-48">
-                  <FieldLabel>Laterality</FieldLabel>
-                  <Select
-                    value={img.laterality}
-                    onValueChange={(v: "left" | "right" | "unknown") =>
-                      handleUpdateImage(img.id, { laterality: v })
-                    }
-                    disabled={isSubmitting}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectItem value="left">Left</SelectItem>
-                        <SelectItem value="right">Right</SelectItem>
-                        <SelectItem value="unknown">Unknown</SelectItem>
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                </Field>
+                  <Field className="flex-1">
+                    <FieldLabel>Laterality</FieldLabel>
+                    <Select
+                      value={img.laterality}
+                      onValueChange={(v: "left" | "right" | "unknown") =>
+                        handleUpdateImage(img.id, { laterality: v })
+                      }
+                      disabled={isSubmitting}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectItem value="left">Left</SelectItem>
+                          <SelectItem value="right">Right</SelectItem>
+                          <SelectItem value="unknown">Unknown</SelectItem>
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </Field>
 
-                {images.length > 1 && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="self-start lg:self-auto"
-                    onClick={() => handleRemoveImage(img.id)}
-                    disabled={isSubmitting}
-                  >
-                    <X data-icon="inline-start" />
-                    <span className="sr-only">Remove image</span>
-                  </Button>
-                )}
+                  {images.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="self-start sm:self-auto"
+                      onClick={() => handleRemoveImage(img.id)}
+                      disabled={isSubmitting}
+                    >
+                      <X data-icon="inline-start" />
+                      <span className="sr-only">Remove image</span>
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           ))}
