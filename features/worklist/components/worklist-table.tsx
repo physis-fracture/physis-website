@@ -46,6 +46,7 @@ import type { WorklistRow } from "@/features/worklist/types";
 import type { WorklistQuery } from "@/features/worklist/schemas/worklist-query";
 import { formatRelativeTime } from "@/features/worklist/utils/relative-time";
 import { deleteStudy } from "@/features/worklist/actions/delete-study";
+import { AddStudyMenu } from "@/features/worklist/components/add-study-menu";
 
 function DeleteStudyDialog({
   studyId,
@@ -157,7 +158,7 @@ export function WorklistTable({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <InputGroup className="max-w-sm">
           <InputGroupAddon align="inline-start">
             <Search />
@@ -180,6 +181,9 @@ export function WorklistTable({
             Clear filters
           </Button>
         )}
+        <div className="ml-auto">
+          <AddStudyMenu />
+        </div>
       </div>
 
       <div className="rounded-md border">
