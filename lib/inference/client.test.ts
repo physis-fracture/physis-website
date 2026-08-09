@@ -238,7 +238,10 @@ describe("getInferenceHealth", () => {
       ),
     );
 
-    await expect(getInferenceHealth()).resolves.toBe("ok");
+    await expect(getInferenceHealth()).resolves.toEqual({
+      status: "ok",
+      contractVersion: "v1",
+    });
   });
 
   it("returns model_unavailable when no model is loaded", async () => {
@@ -249,13 +252,19 @@ describe("getInferenceHealth", () => {
       ),
     );
 
-    await expect(getInferenceHealth()).resolves.toBe("model_unavailable");
+    await expect(getInferenceHealth()).resolves.toEqual({
+      status: "model_unavailable",
+      contractVersion: "v1",
+    });
   });
 
   it("returns unreachable for a malformed payload", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ nope: 1 })));
 
-    await expect(getInferenceHealth()).resolves.toBe("unreachable");
+    await expect(getInferenceHealth()).resolves.toEqual({
+      status: "unreachable",
+      contractVersion: null,
+    });
   });
 
   it("returns unreachable on network failure", async () => {
@@ -264,7 +273,10 @@ describe("getInferenceHealth", () => {
       vi.fn().mockRejectedValue(new Error("ECONNREFUSED")),
     );
 
-    await expect(getInferenceHealth()).resolves.toBe("unreachable");
+    await expect(getInferenceHealth()).resolves.toEqual({
+      status: "unreachable",
+      contractVersion: null,
+    });
   });
 
   it("returns unreachable when the base URL is not configured", async () => {
@@ -272,7 +284,10 @@ describe("getInferenceHealth", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(getInferenceHealth()).resolves.toBe("unreachable");
+    await expect(getInferenceHealth()).resolves.toEqual({
+      status: "unreachable",
+      contractVersion: null,
+    });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

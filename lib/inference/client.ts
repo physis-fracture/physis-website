@@ -105,6 +105,11 @@ const HEALTH_TIMEOUT_MS = 5_000;
 
 export type InferenceHealthStatus = "ok" | "model_unavailable" | "unreachable";
 
+export type InferenceHealth = {
+  status: InferenceHealthStatus;
+  contractVersion: string | null;
+};
+
 const healthResponseSchema = z.object({
   status: z.enum(["ok", "model_unavailable"]),
   contract_version: z.string(),
@@ -225,11 +230,12 @@ export async function predictStudy(
 /**
  * One-shot liveness check against the public {PHYSIS_INFERENCE_BASE_URL}/v1/health
  * endpoint. Never throws: any failure (missing env, network, timeout, bad payload)
- * resolves to "unreachable" so a status card can degrade gracefully.
+ * resolves to status "unreachable" with a null contract version so a status card
+ * can degrade gracefully.
  */
-export async function getInferenceHealth(): Promise<InferenceHealthStatus> {
+export async function getInferenceHealth(): Promise<InferenceHealth> {
   const baseUrl = process.env.PHYSIS_INFERENCE_BASE_URL?.replace(/\/+$/, "");
-  if (!baseUrl) return "unreachable";
+  if (!baseUrl) return { status: "unreachable", contractVersion: null };
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), HEALTH_TIMEOUT_MS);
@@ -241,10 +247,15 @@ export async function getInferenceHealth(): Promise<InferenceHealthStatus> {
       signal: controller.signal,
     });
     const parsed = healthResponseSchema.safeParse(parseJson(await response.text()));
-    if (!response.ok || !parsed.success) return "unreachable";
-    return parsed.data.status;
+    if (!response.ok || !parsed.success) {
+      return { status: "unreachable", contractVersion: null };
+    }
+    return {
+      status: parsed.data.status,
+      contractVersion: parsed.data.contract_version,
+    };
   } catch {
-    return "unreachable";
+    return { status: "unreachable", contractVersion: null };
   } finally {
     clearTimeout(timeout);
   }
