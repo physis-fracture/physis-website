@@ -24,9 +24,9 @@ export function AiSummaryPanel({ study }: { study: StudyDetail }) {
         <CardTitle>AI Summary</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4 text-sm">
-        <div className="flex justify-between items-center pb-2 border-b border-border">
+        <div className="flex items-center justify-between gap-3 pb-2 border-b border-border">
           <span className="text-muted-foreground">Priority Percentile</span>
-          <PriorityBadge percentile={aiResult.priority_percentile || 0} />
+          <PriorityBadge percentile={aiResult.priority_percentile} />
         </div>
         <div className="flex justify-between">
           <span className="text-muted-foreground">Study Triage Score</span>
