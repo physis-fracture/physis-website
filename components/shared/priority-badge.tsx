@@ -54,8 +54,8 @@ export function PriorityBadge({
 // Domain-semantic colors: hardcoded intentionally per design-tokens.md allowed exception
 const priorityClassName: Record<PriorityLevel, string> = {
   critical:
-    "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 hover:bg-red-100",
-  high: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 hover:bg-amber-100",
+    "bg-red-100 text-red-800 hover:bg-red-100",
+  high: "bg-amber-100 text-amber-800 hover:bg-amber-100",
   standard:
     "bg-secondary text-secondary-foreground hover:bg-secondary",
   unscored:

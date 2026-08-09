@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useCallback } from "react";
 
 import {
   Table,
@@ -26,11 +27,39 @@ import {
 } from "@/components/ui/empty";
 import { PriorityBadge } from "@/components/shared/priority-badge";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { TablePagination } from "@/components/shared/table-pagination";
 import type { WorklistRow } from "@/features/worklist/types";
 import { formatRelativeTime } from "@/features/worklist/utils/relative-time";
 
-export function RecentStudiesTable({ rows }: { rows: WorklistRow[] }) {
+export function RecentStudiesTable({
+  rows,
+  page,
+  pageSize,
+  totalCount,
+}: {
+  rows: WorklistRow[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+}) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const updateParams = useCallback(
+    (updates: Record<string, string | undefined>) => {
+      const params = new URLSearchParams(searchParams.toString());
+      for (const [key, value] of Object.entries(updates)) {
+        if (value === undefined || value === "") {
+          params.delete(key);
+        } else {
+          params.set(key, value);
+        }
+      }
+      router.push(`${pathname}?${params.toString()}`);
+    },
+    [router, pathname, searchParams],
+  );
 
   const openStudy = (studyId: string) => {
     router.push(`/worklist/${studyId}`);
@@ -109,6 +138,18 @@ export function RecentStudiesTable({ rows }: { rows: WorklistRow[] }) {
           </Table>
         </div>
       )}
+
+      <div className="pt-4">
+        <TablePagination
+          page={page}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          itemLabel="studies"
+          onPageChange={(nextPage) =>
+            updateParams({ recentPage: String(nextPage) })
+          }
+        />
+      </div>
     </TooltipProvider>
   );
 }

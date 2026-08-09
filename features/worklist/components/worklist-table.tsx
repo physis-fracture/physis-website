@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { useCallback, useRef } from "react";
-import { Search } from "lucide-react";
+import { useCallback, useRef, useState, useTransition } from "react";
+import { Search, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 import {
   Table,
@@ -15,6 +16,16 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   InputGroup,
   InputGroupAddon,
@@ -30,9 +41,67 @@ import {
 } from "@/components/ui/empty";
 import { PriorityBadge } from "@/components/shared/priority-badge";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { TablePagination } from "@/components/shared/table-pagination";
 import type { WorklistRow } from "@/features/worklist/types";
 import type { WorklistQuery } from "@/features/worklist/schemas/worklist-query";
 import { formatRelativeTime } from "@/features/worklist/utils/relative-time";
+import { deleteStudy } from "@/features/worklist/actions/delete-study";
+import { AddStudyMenu } from "@/features/worklist/components/add-study-menu";
+
+function DeleteStudyDialog({
+  studyId,
+  studyCode,
+}: {
+  studyId: string;
+  studyCode: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+
+  const handleDelete = () => {
+    startTransition(async () => {
+      const result = await deleteStudy(studyId);
+      if (result.success) {
+        toast.success(`Study ${studyCode} deleted`);
+        setOpen(false);
+      } else {
+        toast.error(result.error);
+      }
+    });
+  };
+
+  return (
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+          aria-label={`Delete study ${studyCode}`}
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
+          <Trash2 />
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent size="sm">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete study?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This permanently deletes {studyCode} and all of its images from
+            storage and records. This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <Button variant="destructive" disabled={isPending} onClick={handleDelete}>
+            {isPending ? "Deleting..." : "Delete"}
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
 
 export function WorklistTable({
   rows,
@@ -40,19 +109,19 @@ export function WorklistTable({
   page,
   pageSize,
   query,
+  canDelete = false,
 }: {
   rows: WorklistRow[];
   totalCount: number;
   page: number;
   pageSize: number;
   query: WorklistQuery;
+  canDelete?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const totalPages = Math.ceil(totalCount / pageSize);
 
   const updateParams = useCallback(
     (updates: Record<string, string | undefined>) => {
@@ -89,7 +158,7 @@ export function WorklistTable({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <InputGroup className="max-w-sm">
           <InputGroupAddon align="inline-start">
             <Search />
@@ -112,6 +181,9 @@ export function WorklistTable({
             Clear filters
           </Button>
         )}
+        <div className="ml-auto">
+          <AddStudyMenu />
+        </div>
       </div>
 
       <div className="rounded-md border">
@@ -124,9 +196,11 @@ export function WorklistTable({
               <TableHead className="w-[60px]">Sex</TableHead>
               <TableHead>Views</TableHead>
               <TableHead>Waiting</TableHead>
-              <TableHead className="text-right">Percentile</TableHead>
               <TableHead className="text-right">Score</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead className="w-12">
+                <span className="sr-only">Actions</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -181,7 +255,7 @@ export function WorklistTable({
                   }}
                 >
                   <TableCell>
-                    <PriorityBadge percentile={row.priorityPercentile} />
+                    <PriorityBadge percentile={row.priorityPercentile} compact />
                   </TableCell>
                   <TableCell className="font-medium">
                     {row.studyCode}
@@ -199,17 +273,20 @@ export function WorklistTable({
                   </TableCell>
                   <TableCell>{formatRelativeTime(row.arrivedAt)}</TableCell>
                   <TableCell className="text-right font-mono">
-                    {row.priorityPercentile !== null
-                      ? `${row.priorityPercentile.toFixed(1)}%`
-                      : "-"}
-                  </TableCell>
-                  <TableCell className="text-right font-mono">
                     {row.triageScore !== null
                       ? row.triageScore.toFixed(2)
                       : "-"}
                   </TableCell>
                   <TableCell>
                     <StatusBadge status={row.status} />
+                  </TableCell>
+                  <TableCell>
+                    {canDelete && (
+                      <DeleteStudyDialog
+                        studyId={row.id}
+                        studyCode={row.studyCode}
+                      />
+                    )}
                   </TableCell>
                 </TableRow>
               ))
@@ -218,32 +295,13 @@ export function WorklistTable({
         </Table>
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>
-            Showing {(page - 1) * pageSize + 1}–
-            {Math.min(page * pageSize, totalCount)} of {totalCount} studies
-          </span>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page <= 1}
-              onClick={() => updateParams({ page: String(page - 1) })}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= totalPages}
-              onClick={() => updateParams({ page: String(page + 1) })}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
+      <TablePagination
+        page={page}
+        pageSize={pageSize}
+        totalCount={totalCount}
+        itemLabel="studies"
+        onPageChange={(nextPage) => updateParams({ page: String(nextPage) })}
+      />
     </div>
   );
 }

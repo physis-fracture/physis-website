@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { getSystemStatus } from '@/features/admin/api/get-system-status';
-import { SystemStatusDisplay } from '@/features/admin/components/system-status';
+import { SystemOverview } from '@/features/admin/components/system-overview';
+import { getInferenceHealth } from '@/lib/inference/client';
 
 import { connection } from "next/server";
 
@@ -22,15 +23,20 @@ export default async function AdminSystemPage() {
     
   if (profile?.role !== 'admin') redirect('/dashboard');
 
-  const status = await getSystemStatus();
+  const [status, health] = await Promise.all([
+    getSystemStatus(),
+    getInferenceHealth(),
+  ]);
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Admin System</h1>
-        <p className="text-sm text-muted-foreground">System status, performance metrics, and configuration.</p>
+        <h1 className="text-2xl font-semibold tracking-tight">System &amp; Model</h1>
+        <p className="text-sm text-muted-foreground">
+          Inference service status, model capabilities, and operational metrics.
+        </p>
       </div>
-      <SystemStatusDisplay status={status} />
+      <SystemOverview status={status} health={health} />
     </div>
   );
 }

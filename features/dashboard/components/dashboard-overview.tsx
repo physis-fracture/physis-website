@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   PENDING_STATUSES,
@@ -48,10 +48,16 @@ const attentionRows: {
 export function DashboardOverview({
   counts,
   recentStudies,
+  recentTotalCount,
+  recentPage,
+  recentPageSize,
   children,
 }: {
   counts: DashboardCounts;
   recentStudies: WorklistRow[];
+  recentTotalCount: number;
+  recentPage: number;
+  recentPageSize: number;
   children: React.ReactNode;
 }) {
   return (
@@ -112,23 +118,30 @@ export function DashboardOverview({
         {children}
       </div>
 
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h2 className="text-sm font-medium">Recent / Priority Studies</h2>
-            <p className="text-sm text-muted-foreground">
-              Top studies by triage priority.
-            </p>
-          </div>
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/worklist">
-              View Worklist
-              <ChevronRight data-icon="inline-end" />
-            </Link>
-          </Button>
-        </div>
-        <RecentStudiesTable rows={recentStudies} />
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-medium">
+            Recent / Priority Studies
+          </CardTitle>
+          <CardDescription>Top studies by triage priority.</CardDescription>
+          <CardAction>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/worklist">
+                View Worklist
+                <ChevronRight data-icon="inline-end" />
+              </Link>
+            </Button>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
+          <RecentStudiesTable
+            rows={recentStudies}
+            page={recentPage}
+            pageSize={recentPageSize}
+            totalCount={recentTotalCount}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }

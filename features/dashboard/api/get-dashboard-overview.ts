@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { WorklistRow } from "@/features/worklist/types";
 
-const RECENT_LIMIT = 5;
+export const RECENT_PAGE_SIZE = 5;
 
 /**
  * Studies that are still in the triage pipeline (AI running or done) and are
@@ -28,6 +28,7 @@ export type DashboardCounts = {
 export type DashboardOverview = {
   counts: DashboardCounts;
   recentStudies: WorklistRow[];
+  recentTotalCount: number;
 };
 
 /**
@@ -41,7 +42,11 @@ export type DashboardOverview = {
  * - `highPriorityPendingReviewCount` (Needs Attention) = high/critical AND still
  *   in the pipeline (PENDING_STATUSES). A reviewed study is excluded.
  */
-export async function getDashboardOverview(): Promise<DashboardOverview> {
+export async function getDashboardOverview({
+  recentPage = 1,
+}: {
+  recentPage?: number;
+} = {}): Promise<DashboardOverview> {
   const supabase = await createClient();
 
   const today = new Date().toISOString().split("T")[0];
@@ -84,12 +89,16 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
       .from("worklist_studies")
       .select(
         "id, study_code, patient_ref, age_years, sex, status, arrived_at, created_at, updated_at, priority_percentile, triage_score, views",
+        { count: "exact" },
       )
       // Same ordering as the Worklist default (priority_desc): nulls last, so
       // failed/unscored studies sort to the end instead of behaving as low.
       .order("priority_percentile", { ascending: false, nullsFirst: false })
       .order("arrived_at", { ascending: true })
-      .limit(RECENT_LIMIT),
+      .range(
+        (recentPage - 1) * RECENT_PAGE_SIZE,
+        recentPage * RECENT_PAGE_SIZE - 1,
+      ),
   ]);
 
   const results = [
@@ -132,5 +141,6 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
       unscoredCount: unscored.count ?? 0,
     },
     recentStudies,
+    recentTotalCount: recent.count ?? 0,
   };
 }

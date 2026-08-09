@@ -4,9 +4,9 @@ import {
   BarChart3,
   ChevronsUpDown,
   ClipboardList,
-  FilePlus,
   LayoutDashboard,
   LogOut,
+  Network,
   Settings,
   Users,
 } from "lucide-react";
@@ -41,12 +41,12 @@ import { createClient } from "@/lib/supabase/client";
 const mainNav = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Worklist", href: "/worklist", icon: ClipboardList },
-  { title: "New Study", href: "/studies/new", icon: FilePlus },
   { title: "Analytics", href: "/analytics", icon: BarChart3 },
 ];
 
 const adminNav = [
   { title: "Users", href: "/admin/users", icon: Users },
+  { title: "PACS Integration", href: "/admin/pacs", icon: Network },
   { title: "System & Model", href: "/admin/system", icon: Settings },
 ];
 

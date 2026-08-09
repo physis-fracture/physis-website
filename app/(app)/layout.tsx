@@ -3,7 +3,6 @@ import { createClient } from "@/lib/supabase/server";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/shared/app-sidebar";
 import { Separator } from "@/components/ui/separator";
-import { ThemeSwitcher } from "@/components/theme-switcher";
 import { Toaster } from "@/components/ui/sonner";
 
 export default async function AppLayout({
@@ -40,7 +39,6 @@ export default async function AppLayout({
           <SidebarTrigger />
           <Separator orientation="vertical" className="h-4" />
           <div className="flex-1" />
-          <ThemeSwitcher />
         </header>
         <main className="flex-1 p-4 md:p-6">{children}</main>
       </div>
