@@ -1,5 +1,5 @@
-import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { getSession } from '@/features/auth/api/get-session';
 import { getSystemStatus } from '@/features/admin/api/get-system-status';
 import { SystemOverview } from '@/features/admin/components/system-overview';
 import { getInferenceHealth } from '@/lib/inference/client';
@@ -10,17 +10,10 @@ export const instant = false;
 
 export default async function AdminSystemPage() {
   await connection();
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  
+  const { user, profile } = await getSession();
+
   if (!user) redirect('/login');
-  
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-    
+
   if (profile?.role !== 'admin') redirect('/dashboard');
 
   const [status, health] = await Promise.all([

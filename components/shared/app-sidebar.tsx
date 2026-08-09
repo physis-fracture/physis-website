@@ -83,7 +83,7 @@ export function AppSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link href="/dashboard" className="">
+              <Link href="/dashboard" prefetch={false} className="">
                 <Image
                   src="/android-chrome-512x512.png"
                   alt="Physis"
@@ -117,7 +117,7 @@ export function AppSidebar({
                     isActive={pathname.startsWith(item.href)}
                     tooltip={item.title}
                   >
-                    <Link href={item.href}>
+                    <Link href={item.href} prefetch={false}>
                       <item.icon />
                       <span>{item.title}</span>
                     </Link>
@@ -140,7 +140,7 @@ export function AppSidebar({
                       isActive={pathname.startsWith(item.href)}
                       tooltip={item.title}
                     >
-                      <Link href={item.href}>
+                      <Link href={item.href} prefetch={false}>
                         <item.icon />
                         <span>{item.title}</span>
                       </Link>

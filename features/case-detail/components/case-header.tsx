@@ -15,7 +15,7 @@ export function CaseHeader({ study }: { study: StudyDetail }) {
         <BreadcrumbList>
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
-              <Link href="/worklist">Worklist</Link>
+              <Link href="/worklist" prefetch={false}>Worklist</Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
