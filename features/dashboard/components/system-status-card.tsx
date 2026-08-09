@@ -43,8 +43,8 @@ export async function SystemStatusCard({ isAdmin }: { isAdmin: boolean }) {
         <div className="flex items-center justify-between gap-2 text-sm">
           <span className="text-muted-foreground">Inference API</span>
           <span className="flex items-center gap-1.5 font-medium">
-            <span className={`size-2 rounded-full ${healthDotClass[health]}`} />
-            {healthLabel[health]}
+            <span className={`size-2 rounded-full ${healthDotClass[health.status]}`} />
+            {healthLabel[health.status]}
           </span>
         </div>
         {lastInferenceAt !== null && (
