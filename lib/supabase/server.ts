@@ -5,6 +5,13 @@ import type { Database } from "./database.types";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/**
+ * Exponential backoff (ms) between data-API 401 retries. Starts fast (most
+ * replica clock/JWKS-propagation lag clears in <1s) and extends far enough to
+ * cover the occasional longer window observed right after a fresh login.
+ */
+const RETRY_BACKOFF_MS = [250, 500, 1000, 2000, 4000, 8000];
+
 function requestUrl(input: RequestInfo | URL): string {
   if (typeof input === "string") return input;
   if (input instanceof URL) return input.toString();
@@ -21,21 +28,24 @@ function requestUrl(input: RequestInfo | URL): string {
  */
 const fetchWithJwtSkewRetry: typeof fetch = async (input, init) => {
   const url = requestUrl(input);
-  for (let attempt = 0; ; attempt++) {
-    const response = await fetch(input, init);
-    if (response.status !== 401 || !url.includes("/rest/v1/")) {
-      return response;
+  const isDataApi = url.includes("/rest/v1/");
+
+  let response = await fetch(input, init);
+  for (let attempt = 0; response.status === 401 && isDataApi; attempt++) {
+    if (init?.signal?.aborted || attempt >= RETRY_BACKOFF_MS.length) {
+      break;
     }
-    if (init?.signal?.aborted) {
-      return response;
-    }
-    const body = await response.clone().text();
-    console.error(`[supabase:401] ${url} (attempt ${attempt + 1}) ${body.slice(0, 200)}`);
-    if (attempt >= 3) {
-      return response;
-    }
-    await sleep(1000 * 2 ** attempt);
+    await sleep(RETRY_BACKOFF_MS[attempt]);
+    response = await fetch(input, init);
   }
+
+  // Log only when we give up, not on every transient retry.
+  if (response.status === 401 && isDataApi) {
+    const body = await response.clone().text();
+    console.error(`[supabase:401] ${url} ${body.slice(0, 200)}`);
+  }
+
+  return response;
 };
 
 /**

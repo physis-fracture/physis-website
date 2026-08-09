@@ -1,5 +1,5 @@
-import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { getSession } from '@/features/auth/api/get-session';
 import { PacsIntegrationForm } from '@/features/admin/components/pacs-integration-form';
 
 import { connection } from "next/server";
@@ -8,16 +8,9 @@ export const instant = false;
 
 export default async function AdminPacsPage() {
   await connection();
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { user, profile } = await getSession();
 
   if (!user) redirect('/login');
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
 
   if (profile?.role !== 'admin') redirect('/dashboard');
 
