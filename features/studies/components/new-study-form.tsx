@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Plus, X } from "lucide-react";
@@ -35,9 +35,24 @@ interface ImageEntry {
   laterality: "left" | "right" | "unknown";
 }
 
+type SubmitState = {
+  status: "idle" | "success" | "error";
+  studyId?: string;
+};
+
+const INITIAL_STATE: SubmitState = { status: "idle" };
+
+function freshImageEntry(): ImageEntry {
+  return {
+    id: crypto.randomUUID(),
+    file: null,
+    view: "UNKNOWN",
+    laterality: "unknown",
+  };
+}
+
 export function NewStudyForm() {
   const router = useRouter();
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [stage, setStage] = useState<string | null>(null);
 
   const [studyCode, setStudyCode] = useState("");
@@ -45,9 +60,14 @@ export function NewStudyForm() {
   const [sex, setSex] = useState<"male" | "female" | "unknown">("unknown");
   const [notes, setNotes] = useState("");
 
-  const [images, setImages] = useState<ImageEntry[]>([
-    { id: crypto.randomUUID(), file: null, view: "UNKNOWN", laterality: "unknown" },
-  ]);
+  const [images, setImages] = useState<ImageEntry[]>([freshImageEntry()]);
+
+  const valuesRef = useRef({ studyCode, ageYears, sex, notes, images });
+  useEffect(() => {
+    valuesRef.current = { studyCode, ageYears, sex, notes, images };
+  }, [studyCode, ageYears, sex, notes, images]);
+
+  const navigatedRef = useRef(false);
 
   const handleAddImage = () => {
     if (images.length >= 8) {
@@ -68,42 +88,46 @@ export function NewStudyForm() {
     setImages(images.map((img) => (img.id === id ? { ...img, ...updates } : img)));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitStudy = async (): Promise<SubmitState> => {
+    const {
+      studyCode: currentCode,
+      ageYears: currentAge,
+      sex: currentSex,
+      notes: currentNotes,
+      images: currentImages,
+    } = valuesRef.current;
 
-    for (const img of images) {
+    for (const img of currentImages) {
       const file = img.file;
       if (!file) {
         toast.error("Please select a file for all image entries.");
-        return;
+        return { status: "error" };
       }
       if (!ALLOWED_MIME_TYPES.includes(file.type as (typeof ALLOWED_MIME_TYPES)[number])) {
         toast.error(`${file.name} uses an unsupported format.`);
-        return;
+        return { status: "error" };
       }
       if (file.size > MAX_FILE_SIZE_BYTES) {
         toast.error(`${file.name} exceeds the 32 MB limit.`);
-        return;
+        return { status: "error" };
       }
     }
 
-    setIsSubmitting(true);
-    setStage("Preparing study...");
+    const parsedAge = parseFloat(currentAge);
+    if (isNaN(parsedAge) || parsedAge < 0.2 || parsedAge > 19) {
+      toast.error("Age must be a number between 0.2 and 19 years.");
+      return { status: "error" };
+    }
 
     try {
-      const parsedAge = parseFloat(ageYears);
-      if (isNaN(parsedAge) || parsedAge < 0.2 || parsedAge > 19) {
-        throw new Error("Age must be a number between 0.2 and 19 years.");
-      }
-
-      const generatedCode = studyCode.trim() || `ST-${Math.floor(100000 + Math.random() * 900000)}`;
+      const generatedCode = currentCode.trim() || `ST-${Math.floor(100000 + Math.random() * 900000)}`;
 
       const studyPayload = {
         study_code: generatedCode,
         age_years: parsedAge,
-        sex,
-        notes: notes.trim() || undefined,
-        images: images.map((img) => ({
+        sex: currentSex,
+        notes: currentNotes.trim() || undefined,
+        images: currentImages.map((img) => ({
           fileName: img.file!.name,
           fileType: img.file!.type as (typeof ALLOWED_MIME_TYPES)[number],
           fileSize: img.file!.size,
@@ -112,6 +136,8 @@ export function NewStudyForm() {
         })),
       };
 
+      setStage("Preparing study...");
+
       const plan = await createStudy(studyPayload);
       const { studyId } = plan;
 
@@ -119,7 +145,7 @@ export function NewStudyForm() {
 
       await Promise.all(
         plan.images.map(async (uploadDef, i) => {
-          const imgEntry = images[i];
+          const imgEntry = currentImages[i];
 
           if (!imgEntry?.file) {
             throw new Error(`No matching file for image ${uploadDef.imageId}`);
@@ -148,18 +174,32 @@ export function NewStudyForm() {
         toast.success("Study created and analyzed successfully.");
       }
 
-      setStage("Saving results...");
-      router.push(`/worklist/${studyId}`);
+      return { status: "success", studyId };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "An error occurred while submitting.";
       toast.error(message);
-      setIsSubmitting(false);
+      return { status: "error" };
+    } finally {
       setStage(null);
     }
   };
 
+  const [state, formAction, isPending] = useActionState(submitStudy, INITIAL_STATE);
+
+  useEffect(() => {
+    if (state.status === "success" && state.studyId && !navigatedRef.current) {
+      navigatedRef.current = true;
+      setStudyCode("");
+      setAgeYears("");
+      setSex("unknown");
+      setNotes("");
+      setImages([freshImageEntry()]);
+      router.replace(`/worklist/${state.studyId}`);
+    }
+  }, [state, router]);
+
   return (
-    <form onSubmit={handleSubmit} className="flex w-full flex-col gap-6 pb-12">
+    <form action={formAction} className="flex w-full flex-col gap-6 pb-12">
       <Card>
         <CardHeader>
           <CardTitle>Study Information</CardTitle>
@@ -170,10 +210,11 @@ export function NewStudyForm() {
               <FieldLabel htmlFor="studyCode">Study Code</FieldLabel>
               <Input
                 id="studyCode"
+                name="studyCode"
                 placeholder="Leave blank to auto-generate"
                 value={studyCode}
                 onChange={(e) => setStudyCode(e.target.value)}
-                disabled={isSubmitting}
+                disabled={isPending}
               />
             </Field>
 
@@ -181,6 +222,7 @@ export function NewStudyForm() {
               <FieldLabel htmlFor="ageYears">Age (Years)</FieldLabel>
               <Input
                 id="ageYears"
+                name="ageYears"
                 type="number"
                 min="0.2"
                 max="19"
@@ -188,7 +230,7 @@ export function NewStudyForm() {
                 required
                 value={ageYears}
                 onChange={(e) => setAgeYears(e.target.value)}
-                disabled={isSubmitting}
+                disabled={isPending}
               />
             </Field>
 
@@ -197,7 +239,7 @@ export function NewStudyForm() {
               <Select
                 value={sex}
                 onValueChange={(v: "male" | "female" | "unknown") => setSex(v)}
-                disabled={isSubmitting}
+                disabled={isPending}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select sex" />
@@ -216,10 +258,11 @@ export function NewStudyForm() {
               <FieldLabel htmlFor="notes">Clinical Notes</FieldLabel>
               <Textarea
                 id="notes"
+                name="notes"
                 placeholder="Optional clinical notes"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                disabled={isSubmitting}
+                disabled={isPending}
                 className="h-24 resize-none"
               />
             </Field>
@@ -234,7 +277,7 @@ export function NewStudyForm() {
             type="button"
             variant="outline"
             onClick={handleAddImage}
-            disabled={isSubmitting}
+            disabled={isPending}
           >
             <Plus data-icon="inline-start" />
             Add Image
@@ -249,7 +292,7 @@ export function NewStudyForm() {
                   <ImageDropzone
                     id={`file-${img.id}`}
                     file={img.file}
-                    disabled={isSubmitting}
+                    disabled={isPending}
                     onFileChange={(file) => handleUpdateImage(img.id, { file })}
                   />
                 </Field>
@@ -262,7 +305,7 @@ export function NewStudyForm() {
                       onValueChange={(v: "PA" | "AP" | "LATERAL" | "OTHER" | "UNKNOWN") =>
                         handleUpdateImage(img.id, { view: v })
                       }
-                      disabled={isSubmitting}
+                      disabled={isPending}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -286,7 +329,7 @@ export function NewStudyForm() {
                       onValueChange={(v: "left" | "right" | "unknown") =>
                         handleUpdateImage(img.id, { laterality: v })
                       }
-                      disabled={isSubmitting}
+                      disabled={isPending}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -308,7 +351,7 @@ export function NewStudyForm() {
                       size="icon"
                       className="self-start sm:self-auto"
                       onClick={() => handleRemoveImage(img.id)}
-                      disabled={isSubmitting}
+                      disabled={isPending}
                     >
                       <X data-icon="inline-start" />
                       <span className="sr-only">Remove image</span>
@@ -322,14 +365,14 @@ export function NewStudyForm() {
       </Card>
 
       <div className="flex flex-col items-stretch gap-4 sm:items-end">
-        {isSubmitting && stage && (
+        {isPending && stage && (
           <div className="flex items-center justify-center gap-2 text-sm font-medium text-muted-foreground sm:justify-end">
             <Spinner />
             {stage}
           </div>
         )}
-        <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto sm:min-w-44 sm:px-8">
-          {isSubmitting ? "Processing..." : "Submit Study"}
+        <Button type="submit" disabled={isPending} className="w-full sm:w-auto sm:min-w-44 sm:px-8">
+          {isPending ? "Processing..." : "Submit Study"}
         </Button>
       </div>
     </form>
