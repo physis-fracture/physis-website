@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/features/auth/api/get-session";
 import { WorklistTable } from "@/features/worklist/components/worklist-table";
 import { parseWorklistQuery } from "@/features/worklist/schemas/worklist-query";
 import type { WorklistRow } from "@/features/worklist/types";
@@ -21,18 +22,8 @@ export default async function WorklistPage({
   const query = parseWorklistQuery(params);
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  let canDelete = false;
-  if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-    canDelete = profile?.role === "admin";
-  }
+  const { profile } = await getSession();
+  const canDelete = profile?.role === "admin";
 
   let dbQuery = supabase
     .from("worklist_studies")

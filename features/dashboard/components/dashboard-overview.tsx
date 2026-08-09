@@ -64,7 +64,7 @@ export function DashboardOverview({
     <div className="flex flex-col gap-6">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {kpiCards.map((card) => (
-          <Link key={card.key} href={card.href}>
+          <Link key={card.key} href={card.href} prefetch={false}>
             <Card className="py-4 transition-colors hover:bg-muted/50">
               <CardHeader className="px-6 pb-1">
                 <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
@@ -90,6 +90,7 @@ export function DashboardOverview({
               <Link
                 key={row.key}
                 href={row.href}
+                prefetch={false}
                 className="group flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-muted/50"
               >
                 <span className={counts[row.key] > 0 ? "font-medium" : "text-muted-foreground"}>
@@ -126,7 +127,7 @@ export function DashboardOverview({
           <CardDescription>Top studies by triage priority.</CardDescription>
           <CardAction>
             <Button variant="outline" size="sm" asChild>
-              <Link href="/worklist">
+              <Link href="/worklist" prefetch={false}>
                 View Worklist
                 <ChevronRight data-icon="inline-end" />
               </Link>

@@ -1,5 +1,5 @@
-import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { getSession } from '@/features/auth/api/get-session';
 import { getUsers } from '@/features/admin/api/get-users';
 import { UsersTable } from '@/features/admin/components/users-table';
 
@@ -19,16 +19,9 @@ export default async function AdminUsersPage({
   const rawPage = typeof params.page === "string" ? parseInt(params.page) : 1;
   const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { user, profile } = await getSession();
 
   if (!user) redirect('/login');
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
 
   if (profile?.role !== 'admin') redirect('/dashboard');
 

@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { login } from "@/features/auth/actions/login";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
@@ -18,28 +17,19 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
-    const supabase = createClient();
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const result = await login(email, password);
 
-    if (authError) {
-      // Do not expose whether account exists (PRD Section 12.1)
-      setError("Invalid email or password.");
+    // On success the action redirects to /dashboard; only an auth failure returns.
+    if (result?.error) {
+      setError(result.error);
       setLoading(false);
-      return;
     }
-
-    setLoading(false);
-    router.push("/dashboard");
   }
 
   return (

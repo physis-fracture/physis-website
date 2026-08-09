@@ -3,7 +3,7 @@ import { FilePlus } from "lucide-react";
 import { Suspense } from "react";
 
 import { connection } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/features/auth/api/get-session";
 import { Button } from "@/components/ui/button";
 import {
   getDashboardOverview,
@@ -29,22 +29,12 @@ export default async function DashboardPage({
   const recentPage =
     Number.isFinite(rawRecentPage) && rawRecentPage > 0 ? rawRecentPage : 1;
 
-  const supabase = await createClient();
-
-  const [{ data: { user } }, overview] = await Promise.all([
-    supabase.auth.getUser(),
+  const [{ profile }, overview] = await Promise.all([
+    getSession(),
     getDashboardOverview({ recentPage }),
   ]);
 
-  let isAdmin = false;
-  if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-    isAdmin = profile?.role === "admin";
-  }
+  const isAdmin = profile?.role === "admin";
 
   return (
     <div className="flex flex-col gap-6">
@@ -56,7 +46,7 @@ export default async function DashboardPage({
           </p>
         </div>
         <Button asChild>
-          <Link href="/studies/new">
+          <Link href="/studies/new" prefetch={false}>
             <FilePlus data-icon="inline-start" />
             New Study
           </Link>

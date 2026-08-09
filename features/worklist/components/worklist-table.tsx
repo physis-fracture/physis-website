@@ -232,7 +232,7 @@ export function WorklistTable({
                         </Button>
                       ) : (
                         <Button variant="outline" size="sm" asChild>
-                          <Link href="/studies/new">New Study</Link>
+                          <Link href="/studies/new" prefetch={false}>New Study</Link>
                         </Button>
                       )}
                     </EmptyContent>

@@ -76,7 +76,7 @@ export function RecentStudiesTable({
                 Create a new study to start triage.
               </EmptyDescription>
               <Button variant="outline" size="sm" asChild>
-                <Link href="/studies/new">New Study</Link>
+                <Link href="/studies/new" prefetch={false}>New Study</Link>
               </Button>
             </EmptyContent>
           </Empty>
