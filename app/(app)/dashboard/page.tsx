@@ -5,7 +5,10 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
-import { getDashboardOverview } from "@/features/dashboard/api/get-dashboard-overview";
+import {
+  getDashboardOverview,
+  RECENT_PAGE_SIZE,
+} from "@/features/dashboard/api/get-dashboard-overview";
 import { DashboardOverview } from "@/features/dashboard/components/dashboard-overview";
 import {
   SystemStatusCard,
@@ -14,13 +17,23 @@ import {
 
 export const instant = false;
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   await connection();
+  const params = await searchParams;
+  const rawRecentPage =
+    typeof params.recentPage === "string" ? parseInt(params.recentPage) : 1;
+  const recentPage =
+    Number.isFinite(rawRecentPage) && rawRecentPage > 0 ? rawRecentPage : 1;
+
   const supabase = await createClient();
 
   const [{ data: { user } }, overview] = await Promise.all([
     supabase.auth.getUser(),
-    getDashboardOverview(),
+    getDashboardOverview({ recentPage }),
   ]);
 
   let isAdmin = false;
@@ -53,6 +66,9 @@ export default async function DashboardPage() {
       <DashboardOverview
         counts={overview.counts}
         recentStudies={overview.recentStudies}
+        recentTotalCount={overview.recentTotalCount}
+        recentPage={recentPage}
+        recentPageSize={RECENT_PAGE_SIZE}
       >
         <Suspense fallback={<SystemStatusCardSkeleton />}>
           <SystemStatusCard isAdmin={isAdmin} />

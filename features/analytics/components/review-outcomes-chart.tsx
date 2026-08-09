@@ -17,7 +17,7 @@ const OUTCOMES = [
 const chartConfig = {
   count: {
     label: "Reviews",
-    theme: { light: "#2563eb", dark: "#3b82f6" },
+    theme: { light: "#06b6d4" },
   },
 } satisfies ChartConfig;
 

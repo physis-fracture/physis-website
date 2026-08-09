@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { UserProfile } from '../api/get-users';
 import { createUser, toggleUserActive, updateUserRole } from '../actions/manage-user';
 import { Button } from '@/components/ui/button';
@@ -20,6 +21,13 @@ import {
   FieldGroup,
   FieldLabel,
 } from '@/components/ui/field';
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -44,13 +52,42 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { TablePagination } from '@/components/shared/table-pagination';
 import { MoreHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 
-export function UsersTable({ users }: { users: UserProfile[] }) {
+export function UsersTable({
+  users,
+  totalCount,
+  page,
+  pageSize,
+}: {
+  users: UserProfile[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [role, setRole] = useState<'radiologist' | 'admin'>('radiologist');
+
+  const updateParams = useCallback(
+    (updates: Record<string, string | undefined>) => {
+      const params = new URLSearchParams(searchParams.toString());
+      for (const [key, value] of Object.entries(updates)) {
+        if (value === undefined || value === '') {
+          params.delete(key);
+        } else {
+          params.set(key, value);
+        }
+      }
+      router.push(`${pathname}?${params.toString()}`);
+    },
+    [router, pathname, searchParams],
+  );
 
   async function handleCreateUser(formData: FormData) {
     setIsLoading(true);
@@ -84,124 +121,135 @@ export function UsersTable({ users }: { users: UserProfile[] }) {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-medium">System Users</h2>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>Create User</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create New User</DialogTitle>
-              <DialogDescription>
-                Add a new user to the system. They will receive an email to set up their account.
-              </DialogDescription>
-            </DialogHeader>
-            <form action={handleCreateUser}>
-              <FieldGroup>
-                <Field>
-                  <FieldLabel htmlFor="email">Email</FieldLabel>
-                  <Input id="email" name="email" type="email" required />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="password">Password</FieldLabel>
-                  <Input id="password" name="password" type="password" required minLength={6} />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="displayName">Display Name</FieldLabel>
-                  <Input id="displayName" name="displayName" required />
-                </Field>
-                <Field>
-                  <FieldLabel>Role</FieldLabel>
-                  <Select
-                    value={role}
-                    onValueChange={(v) => setRole(v as 'radiologist' | 'admin')}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectItem value="radiologist">Radiologist</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                  <input type="hidden" name="role" value={role} />
-                </Field>
-                <DialogFooter>
-                  <Button type="submit" disabled={isLoading}>
-                    {isLoading && <Spinner data-icon="inline-start" />}
-                    {isLoading ? 'Creating...' : 'Create User'}
-                  </Button>
-                </DialogFooter>
-              </FieldGroup>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Display Name</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead className="w-[80px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {users.map((user) => (
-              <TableRow key={user.id}>
-                <TableCell className="font-medium">{user.display_name}</TableCell>
-                <TableCell>
-                  <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
-                    {user.role}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={user.is_active ? 'outline' : 'destructive'}>
-                    {user.is_active ? 'Active' : 'Disabled'}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {new Date(user.created_at).toLocaleDateString()}
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal />
-                        <span className="sr-only">Open menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuGroup>
-                        <DropdownMenuItem onClick={() => handleToggleActive(user.id, user.is_active || false)}>
-                          {user.is_active ? 'Disable User' : 'Enable User'}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleRoleChange(user.id, user.role === 'admin' ? 'radiologist' : 'admin')}>
-                          Change to {user.role === 'admin' ? 'Radiologist' : 'Admin'}
-                        </DropdownMenuItem>
-                      </DropdownMenuGroup>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
-            {users.length === 0 && (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm font-medium">System Users</CardTitle>
+        <CardAction>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>Create User</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create New User</DialogTitle>
+                <DialogDescription>
+                  Add a new user to the system. They will receive an email to set up their account.
+                </DialogDescription>
+              </DialogHeader>
+              <form action={handleCreateUser}>
+                <FieldGroup>
+                  <Field>
+                    <FieldLabel htmlFor="email">Email</FieldLabel>
+                    <Input id="email" name="email" type="email" required />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="password">Password</FieldLabel>
+                    <Input id="password" name="password" type="password" required minLength={6} />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="displayName">Display Name</FieldLabel>
+                    <Input id="displayName" name="displayName" required />
+                  </Field>
+                  <Field>
+                    <FieldLabel>Role</FieldLabel>
+                    <Select
+                      value={role}
+                      onValueChange={(v) => setRole(v as 'radiologist' | 'admin')}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectItem value="radiologist">Radiologist</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    <input type="hidden" name="role" value={role} />
+                  </Field>
+                  <DialogFooter>
+                    <Button type="submit" disabled={isLoading}>
+                      {isLoading && <Spinner data-icon="inline-start" />}
+                      {isLoading ? 'Creating...' : 'Create User'}
+                    </Button>
+                  </DialogFooter>
+                </FieldGroup>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </CardAction>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={5} className="py-6 text-center text-muted-foreground">
-                  No users found
-                </TableCell>
+                <TableHead>Display Name</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead className="w-[80px]">Actions</TableHead>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
+            </TableHeader>
+            <TableBody>
+              {users.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell className="font-medium">{user.display_name}</TableCell>
+                  <TableCell>
+                    <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                      {user.role}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={user.is_active ? 'outline' : 'destructive'}>
+                      {user.is_active ? 'Active' : 'Disabled'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {new Date(user.created_at).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal />
+                          <span className="sr-only">Open menu</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuGroup>
+                          <DropdownMenuItem onClick={() => handleToggleActive(user.id, user.is_active || false)}>
+                            {user.is_active ? 'Disable User' : 'Enable User'}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleRoleChange(user.id, user.role === 'admin' ? 'radiologist' : 'admin')}>
+                            Change to {user.role === 'admin' ? 'Radiologist' : 'Admin'}
+                          </DropdownMenuItem>
+                        </DropdownMenuGroup>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {users.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="py-6 text-center text-muted-foreground">
+                    No users found
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        <TablePagination
+          page={page}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          itemLabel="users"
+          onPageChange={(nextPage) => updateParams({ page: String(nextPage) })}
+        />
+      </CardContent>
+    </Card>
   );
 }

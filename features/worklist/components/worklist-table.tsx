@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/empty";
 import { PriorityBadge } from "@/components/shared/priority-badge";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { TablePagination } from "@/components/shared/table-pagination";
 import type { WorklistRow } from "@/features/worklist/types";
 import type { WorklistQuery } from "@/features/worklist/schemas/worklist-query";
 import { formatRelativeTime } from "@/features/worklist/utils/relative-time";
@@ -51,8 +52,6 @@ export function WorklistTable({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const totalPages = Math.ceil(totalCount / pageSize);
 
   const updateParams = useCallback(
     (updates: Record<string, string | undefined>) => {
@@ -124,7 +123,6 @@ export function WorklistTable({
               <TableHead className="w-[60px]">Sex</TableHead>
               <TableHead>Views</TableHead>
               <TableHead>Waiting</TableHead>
-              <TableHead className="text-right">Percentile</TableHead>
               <TableHead className="text-right">Score</TableHead>
               <TableHead>Status</TableHead>
             </TableRow>
@@ -132,7 +130,7 @@ export function WorklistTable({
           <TableBody>
             {rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9}>
+                <TableCell colSpan={8}>
                   <Empty className="py-12">
                     <EmptyHeader>
                       <EmptyMedia variant="icon">
@@ -181,7 +179,7 @@ export function WorklistTable({
                   }}
                 >
                   <TableCell>
-                    <PriorityBadge percentile={row.priorityPercentile} />
+                    <PriorityBadge percentile={row.priorityPercentile} compact />
                   </TableCell>
                   <TableCell className="font-medium">
                     {row.studyCode}
@@ -199,11 +197,6 @@ export function WorklistTable({
                   </TableCell>
                   <TableCell>{formatRelativeTime(row.arrivedAt)}</TableCell>
                   <TableCell className="text-right font-mono">
-                    {row.priorityPercentile !== null
-                      ? `${row.priorityPercentile.toFixed(1)}%`
-                      : "-"}
-                  </TableCell>
-                  <TableCell className="text-right font-mono">
                     {row.triageScore !== null
                       ? row.triageScore.toFixed(2)
                       : "-"}
@@ -218,32 +211,13 @@ export function WorklistTable({
         </Table>
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>
-            Showing {(page - 1) * pageSize + 1}–
-            {Math.min(page * pageSize, totalCount)} of {totalCount} studies
-          </span>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page <= 1}
-              onClick={() => updateParams({ page: String(page - 1) })}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= totalPages}
-              onClick={() => updateParams({ page: String(page + 1) })}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
+      <TablePagination
+        page={page}
+        pageSize={pageSize}
+        totalCount={totalCount}
+        itemLabel="studies"
+        onPageChange={(nextPage) => updateParams({ page: String(nextPage) })}
+      />
     </div>
   );
 }

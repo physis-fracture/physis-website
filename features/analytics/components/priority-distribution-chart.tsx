@@ -1,6 +1,6 @@
 "use client";
 
-import { Bar, BarChart, Cell, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, XAxis, YAxis } from "recharts";
 import {
   ChartContainer,
   ChartTooltip,
@@ -15,28 +15,21 @@ type PriorityDistribution = {
   unscored: number;
 };
 
-// Domain-severity palette, consistent with priority-badge.tsx:
-// Critical = red, High = amber, Standard = neutral, Unscored = muted.
 const chartConfig = {
-  critical: {
-    label: "Critical",
-    theme: { light: "#dc2626", dark: "#ef4444" },
-  },
-  high: {
-    label: "High",
-    theme: { light: "#d97706", dark: "#f59e0b" },
-  },
-  standard: {
-    label: "Standard",
-    theme: { light: "#64748b", dark: "#94a3b8" },
-  },
-  unscored: {
-    label: "Unscored",
-    theme: { light: "#a1a1aa", dark: "#71717a" },
+  count: {
+    label: "Studies",
+    theme: { light: "#06b6d4" },
   },
 } satisfies ChartConfig;
 
 const ORDER = ["critical", "high", "standard", "unscored"] as const;
+
+const LEVEL_LABELS: Record<keyof PriorityDistribution, string> = {
+  critical: "Critical",
+  high: "High",
+  standard: "Standard",
+  unscored: "Unscored",
+};
 
 export function PriorityDistributionChart({
   distribution,
@@ -44,9 +37,8 @@ export function PriorityDistributionChart({
   distribution: PriorityDistribution;
 }) {
   const data = ORDER.map((key) => ({
-    level: chartConfig[key].label,
+    level: LEVEL_LABELS[key],
     count: distribution[key],
-    fill: `var(--color-${key})`,
   }));
 
   return (
@@ -86,11 +78,7 @@ export function PriorityDistributionChart({
           }}
         />
         <ChartTooltip content={<ChartTooltipContent nameKey="level" />} />
-        <Bar dataKey="count" radius={4} barSize={24}>
-          {data.map((row) => (
-            <Cell key={row.level} fill={row.fill} />
-          ))}
-        </Bar>
+        <Bar dataKey="count" fill="var(--color-count)" radius={4} barSize={24} />
       </BarChart>
     </ChartContainer>
   );

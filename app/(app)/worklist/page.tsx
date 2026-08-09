@@ -3,6 +3,7 @@ import { WorklistTable } from "@/features/worklist/components/worklist-table";
 import { parseWorklistQuery } from "@/features/worklist/schemas/worklist-query";
 import type { WorklistRow } from "@/features/worklist/types";
 import type { Database } from "@/lib/supabase/database.types";
+import { Card, CardContent } from "@/components/ui/card";
 
 const PAGE_SIZE = 20;
 
@@ -116,7 +117,7 @@ export default async function WorklistPage({
   }));
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Worklist</h1>
         <p className="text-sm text-muted-foreground">
@@ -125,13 +126,17 @@ export default async function WorklistPage({
         </p>
       </div>
 
-      <WorklistTable
-        rows={rows}
-        totalCount={count ?? 0}
-        page={page}
-        pageSize={PAGE_SIZE}
-        query={query}
-      />
+      <Card>
+        <CardContent className="flex flex-col gap-4">
+          <WorklistTable
+            rows={rows}
+            totalCount={count ?? 0}
+            page={page}
+            pageSize={PAGE_SIZE}
+            query={query}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }
