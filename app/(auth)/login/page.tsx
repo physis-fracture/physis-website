@@ -4,7 +4,7 @@ import { LoginForm } from "@/features/auth/components/login-form";
 export default function LoginPage() {
   return (
     <div className="grid min-h-svh lg:grid-cols-2 bg-background">
-      <div className="flex flex-col px-6 py-12 sm:px-12">
+      <div className="flex flex-col bg-white px-6 py-12 sm:px-12">
         <div className="mx-auto w-full max-w-sm">
           <Image
             src="/logo/Logo Physis.svg"
