@@ -23,7 +23,7 @@ export default async function AppLayout({
   return (
     <SidebarProvider>
       <AppSidebar role={profile.role} displayName={profile.display_name} />
-      <div className="flex flex-1 flex-col min-h-svh">
+      <div className="flex flex-1 flex-col min-h-svh min-w-0">
         <header className="flex h-12 items-center gap-2 border-b px-4">
           <SidebarTrigger />
           <Separator orientation="vertical" className="h-4" />
