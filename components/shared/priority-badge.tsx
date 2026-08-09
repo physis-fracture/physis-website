@@ -38,13 +38,11 @@ export function PriorityBadge({
   }
 
   return (
-    <div className="flex flex-col gap-0.5">
-      <Badge className={priorityClassName[level]}>
-        {label}
-      </Badge>
+    <div className="flex items-center gap-1.5">
+      <Badge className={priorityClassName[level]}>{label}</Badge>
       {percentile !== null && (
-        <span className="text-xs text-muted-foreground font-mono">
-          {percentile.toFixed(1)}%
+        <span className="font-mono text-xs text-muted-foreground">
+          · {percentile.toFixed(1)}%
         </span>
       )}
     </div>
