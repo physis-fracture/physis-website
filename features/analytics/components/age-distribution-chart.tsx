@@ -13,7 +13,7 @@ const BANDS = ["0-4", "5-9", "10-14", "15-19"] as const;
 const chartConfig = {
   count: {
     label: "Studies",
-    theme: { light: "#0d9488", dark: "#2dd4bf" },
+    theme: { light: "#06b6d4" },
   },
 } satisfies ChartConfig;
 
