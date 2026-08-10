@@ -8,6 +8,10 @@
   [Live application](https://physis-fracture.netlify.app/) | [AI backend and research](https://github.com/physis-fracture/OsteoJEPA)
 </div>
 
+### email & Password  
+- admin@gmail.com
+- Password123
+
 ## About the project
 
 PHYSIS is a research and competition prototype that helps radiologists decide which pediatric wrist study to review next. It accepts one or more radiographs, sends them to an inference service, and orders the worklist by the returned age-band-relative priority percentile.
